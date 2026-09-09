@@ -256,7 +256,8 @@ class OwnershipTests(Base):
 
     def test_saving_only_ever_writes_your_own_row(self):
         day = dt.date.today().isoformat()
-        self.client.post(reverse("day", args=[day]), self.full_day(youtube="W", watching="Y"))
+        self.client.post(reverse("day", args=[day]),
+                         self.full_day(youtube="W", watching="Y", reason="Lab tutorial"))
         mine = DayLog.objects.get(participant=self.me)
         self.assertEqual((mine.youtube, mine.watching), ("W", "Y"))
         self.assertFalse(DayLog.objects.filter(participant=self.other).exists())
@@ -751,6 +752,15 @@ class RoleTests(Base):
         )
         self.assertNotContains(self.client.get(reverse("board")), "Open</a>")
 
+    def test_the_organiser_note_on_the_board_is_hidden_from_competitors(self):
+        """The 'You help run this' line is for organisers, not the whole group."""
+        note = "You help run this"
+        self.client.force_login(self.player.user)
+        self.assertNotContains(self.client.get(reverse("board")), note)
+        for who in (self.owner, self.razzak):
+            self.client.force_login(who.user)
+            self.assertContains(self.client.get(reverse("board")), note)
+
     def test_open_links_appear_for_both_kinds_of_organiser(self):
         for who in (self.owner, self.razzak):
             self.client.force_login(who.user)
@@ -819,3 +829,84 @@ class RoleTests(Base):
     def test_the_rules_page_still_warns_people(self):
         self.client.force_login(self.player.user)
         self.assertContains(self.client.get(reverse("rules")), "can open any participant")
+
+
+@override_settings(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END)
+class EvidenceTests(Base):
+    """"Fine with evidence of official use" — the reason box is the evidence."""
+
+    def setUp(self):
+        super().setUp()
+        self.me = self.join("Me", "me@example.com")
+        self.client.force_login(self.me.user)
+        self.url = reverse("day", args=[dt.date.today().isoformat()])
+
+    def answers(self, **overrides):
+        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
+                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data.update(overrides)
+        return data
+
+    def test_a_study_or_work_day_needs_a_reason(self):
+        response = self.client.post(self.url, self.answers(youtube="W"))
+        self.assertEqual(response.status_code, 200)          # not saved
+        self.assertEqual(DayLog.objects.count(), 0)
+        self.assertContains(response, "this is the evidence")
+
+    def test_a_study_or_work_day_saves_once_a_reason_is_given(self):
+        response = self.client.post(
+            self.url, self.answers(youtube="W", reason="Lab tutorial for the course")
+        )
+        self.assertEqual(response.status_code, 302)
+        log = DayLog.objects.get()
+        self.assertEqual(log.youtube, "W")
+        self.assertEqual(log.reason, "Lab tutorial for the course")
+
+    def test_whitespace_is_not_evidence(self):
+        self.client.post(self.url, self.answers(news="W", reason="   "))
+        self.assertEqual(DayLog.objects.count(), 0)
+
+    def test_owning_up_to_a_slip_needs_no_reason(self):
+        """Admitting a slip must stay the easy path, not the one with an error."""
+        response = self.client.post(self.url, self.answers(facebook="Y"))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(DayLog.objects.get().broke_rule)
+
+    def test_a_clean_day_needs_no_reason(self):
+        self.assertEqual(self.client.post(self.url, self.answers()).status_code, 302)
+        self.assertEqual(DayLog.objects.count(), 1)
+
+    def test_newspapers_now_state_the_work_exception(self):
+        response = self.client.get(reverse("today"))
+        self.assertContains(response, "industry updates read for a job or official duty")
+
+    def test_the_rules_say_a_work_day_keeps_you_in_the_competition(self):
+        response = self.client.get(reverse("rules"))
+        self.assertContains(response, "does not put you out of the competition")
+        self.assertContains(response, "whoever used none of these at all comes first")
+
+
+@override_settings(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END)
+class WinnerPriorityTests(Base):
+    """The stated rule: work days keep you in, but a pure record is ranked first."""
+
+    def test_a_work_day_beats_a_slip_but_loses_to_a_pure_record(self):
+        pure = self.join("Pure", "pure@example.com")
+        worked = self.join("Worked", "worked@example.com")
+        slipped = self.join("Slipped", "slipped@example.com")
+        for offset in range(10):
+            d = LIVE_START + dt.timedelta(days=offset)
+            self.log(pure, d)
+            self.log(worked, d, youtube="W" if offset < 4 else "N")
+            self.log(slipped, d, news="Y" if offset == 0 else "N")
+
+        order = [c.participant.full_name for c in services.leaderboard()
+                 if c.participant.full_name in {"Pure", "Worked", "Slipped"}]
+        self.assertEqual(order, ["Pure", "Worked", "Slipped"])
+
+        by_name = {c.participant.full_name: c for c in services.leaderboard()}
+        # everyone who never slipped is still in it, work days or not
+        self.assertTrue(by_name["Pure"].on_track)
+        self.assertTrue(by_name["Worked"].on_track)
+        self.assertFalse(by_name["Slipped"].on_track)
+        self.assertEqual(by_name["Worked"].work_days, 4)

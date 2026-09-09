@@ -22,7 +22,8 @@ CATEGORIES = [
     ("youtube", "YouTube", "Allowed only for study or work you had to do."),
     ("facebook", "Facebook", "No exceptions agreed for this one."),
     ("instagram", "Instagram, X, LinkedIn", "LinkedIn is allowed for a job search."),
-    ("news", "Newspapers", "Online and print, sports pages included."),
+    ("news", "Newspapers", "Online and print, sports pages included. News or industry "
+                           "updates read for a job or official duty count as study or work."),
     ("other", "Other apps", "Reels, TikTok, Telegram channels, podcasts, anything similar."),
     ("watching", "Videos, films, games", "On any device — phone, laptop or PC."),
 ]

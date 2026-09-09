@@ -57,10 +57,14 @@
     {{ form.instead }}
   </div>
   <div class="field">
-    <label for="{{ form.reason.id_for_label }}">Reason, if you answered yes or study/work</label>
+    <label for="{{ form.reason.id_for_label }}">Reason — needed if you answered study or work</label>
     {{ form.reason }}
+    {% for e in form.reason.errors %}<span class="err">{{ e }}</span>{% endfor %}
   </div>
-  {% if form.errors %}<p class="err" style="color:var(--yes)">{{ form.errors }}</p>{% endif %}
+  {% for e in form.non_field_errors %}<p class="err" style="color:var(--yes)">{{ e }}</p>{% endfor %}
+  {% for field in form %}{% if field.name != "reason" %}{% for e in field.errors %}
+    <p class="err" style="color:var(--yes)">{{ field.label }}: {{ e }}</p>
+  {% endfor %}{% endif %}{% endfor %}
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
     <button class="btn go" type="submit">{% if was_saved %}Update{% else %}Save{% endif %}</button>

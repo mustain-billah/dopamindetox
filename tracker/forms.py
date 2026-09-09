@@ -7,7 +7,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import User
 from django.db import transaction
 
-from .models import CATEGORY_KEYS, DayLog, Participant, WeeklyNote
+from .models import CATEGORY_KEYS, DayLog, Mark, Participant, WeeklyNote
 
 
 class SignUpForm(forms.Form):
@@ -106,6 +106,14 @@ class EmailLoginForm(AuthenticationForm):
 
 
 class DayLogForm(forms.ModelForm):
+    """The daily answers.
+
+    A study-or-work answer needs a reason: the group agreed those uses are fine
+    "with evidence of official use", and this box is the evidence. A slip needs
+    no reason — owning up should be the easy path, not the one with a form
+    error attached.
+    """
+
     class Meta:
         model = DayLog
         fields = CATEGORY_KEYS + ["said_no", "instead", "reason"]
@@ -118,6 +126,17 @@ class DayLogForm(forms.ModelForm):
                 attrs={"placeholder": "If you used something, say why in a few words"}
             ),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        marks = [cleaned.get(key) for key in CATEGORY_KEYS]
+        if Mark.WORK in marks and not (cleaned.get("reason") or "").strip():
+            self.add_error(
+                "reason",
+                "Say what the study or work was — the group agreed these uses "
+                "are fine with evidence, and this is the evidence.",
+            )
+        return cleaned
 
 
 class WeeklyNoteForm(forms.ModelForm):
