@@ -36,7 +36,11 @@ anyone actually did, and the challenge says so out loud.
   using YouTube for a class is allowed, but someone with no such days is ahead
   of someone who has them.
 - **This week** — two lines a week, so four months leave a record.
-- **All 123 days** — a colour grid of the whole challenge.
+- **Missed a day?** The page lists every gap as a tappable date, and every past
+  square in the grid links to that day, so filling one in is one tap rather than
+  clicking "Previous day" over and over. There is no deadline on backfilling —
+  the challenge runs on honesty, not on locking the form.
+- **All 123 days** — a colour grid of the whole challenge, clickable.
 
 ## Run it locally
 

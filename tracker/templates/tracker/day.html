@@ -111,13 +111,26 @@
     </div>
   </div>
 
+  {% if missing_days %}
+  <div class="gaps">
+    <p class="tiny"><b>Days you have not filled in.</b> Tap one to do it now — you can go back any time.</p>
+    <div class="chips">
+      {% for d in missing_days %}
+        <a class="chip" href="{% url 'day' d|date:'Y-m-d' %}">{{ d|date:"j M" }}</a>
+      {% endfor %}
+      {% if more_missing %}<span class="chip more">and {{ more_missing }} more</span>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   <div class="gridwrap" style="margin-top:20px">
     <div class="cal">
-      {% for c in grid %}<span class="{{ c.status }}{% if c.future %} future{% endif %}{% if c.is_today %} now{% endif %}" title="{{ c.date|date:'j M' }}"></span>{% endfor %}
+      {% for c in grid %}{% if c.future %}<span class="future" title="{{ c.date|date:'j M' }} — still ahead"></span>{% else %}<a class="{{ c.status }}{% if c.missing %} missing{% endif %}{% if c.is_today %} now{% endif %}" href="{% url 'day' c.date|date:'Y-m-d' %}" title="{{ c.date|date:'j M' }}{% if c.missing %} — not filled in{% endif %}"></a>{% endif %}{% endfor %}
     </div>
   </div>
   <p class="tiny muted" style="margin-top:12px">
-    One square per day, in the same colours. The ringed square is today; the pale ones are still ahead.
+    One square per day, in the same colours. Click any past square to fill that day in or change it.
+    The ringed square is today; the pale ones are still ahead.
   </p>
 </div>
 {% endblock %}

@@ -101,6 +101,7 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
     # Days of the challenge that have already happened, so the breakdown can
     # say how many are still blank. Zero before the challenge starts.
     elapsed = min(max(services.day_number(dt.date.today()), 0), total_days())
+    missing = missing_days(card)
     return render(
         request,
         "tracker/day.html",
@@ -115,7 +116,9 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
             "next_day": date + dt.timedelta(days=1) if date < dt.date.today() else None,
             "card": card,
             "elapsed": elapsed,
-            "missed_days": max(0, elapsed - card.logged_days),
+            "missed_days": len(missing),
+            "missing_days": missing[:12],
+            "more_missing": max(0, len(missing) - 12),
             "grid": build_grid(card),
             "marks": Mark,
         },
@@ -123,16 +126,36 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
 
 
 def build_grid(card: services.Scorecard) -> list[dict]:
-    """One cell per day of the challenge, for the calendar strip."""
+    """One cell per day of the challenge, for the calendar strip.
+
+    Past cells carry a link so the grid itself is how you go back and fill in a
+    day you missed.
+    """
     start, now = challenge_start(), dt.date.today()
+    cells = []
+    for offset in range(total_days()):
+        date = start + dt.timedelta(days=offset)
+        cells.append(
+            {
+                "date": date,
+                "status": card.by_date.get(date) or "",
+                "future": date > now,
+                "is_today": date == now,
+                "missing": date <= now and date not in card.by_date,
+            }
+        )
+    return cells
+
+
+def missing_days(card: services.Scorecard) -> list[dt.date]:
+    """Days of the challenge that have happened but were never filled in."""
+    start, now = challenge_start(), min(dt.date.today(), challenge_end())
+    if now < start:
+        return []
     return [
-        {
-            "date": start + dt.timedelta(days=offset),
-            "status": card.by_date.get(start + dt.timedelta(days=offset)) or "",
-            "future": start + dt.timedelta(days=offset) > now,
-            "is_today": start + dt.timedelta(days=offset) == now,
-        }
-        for offset in range(total_days())
+        start + dt.timedelta(days=offset)
+        for offset in range((now - start).days + 1)
+        if (start + dt.timedelta(days=offset)) not in card.by_date
     ]
 
 

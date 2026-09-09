@@ -262,15 +262,96 @@ python manage.py collectstatic --noinput
 
 Then **Reload** in the Web tab.
 
-## Backing up
+## The database
 
-Everyone's answers are one SQLite file:
+Everything — accounts, the roster, everyone's answers — is one SQLite file:
+
+```
+/home/dopamindetox/dopamindetox/db.sqlite3
+```
+
+**Back it up before deleting anything.** In a Bash console:
 
 ```bash
 cp ~/dopamindetox/db.sqlite3 ~/detox-backup-$(date +%F).sqlite3
 ```
 
-Download it from the **Files** tab. Worth doing monthly, and before any update.
+Download it from the **Files** tab. Worth doing monthly, before any update, and
+always before a delete. To put a backup back:
+
+```bash
+cp ~/detox-backup-2026-09-10.sqlite3 ~/dopamindetox/db.sqlite3
+```
+
+then **Reload** in the Web tab.
+
+### Deleting a few entries — use the admin
+
+<https://dopamindetox.pythonanywhere.com/admin/tracker/daylog/>
+
+Sign in with the superuser from step 6. You get a searchable, sortable list of
+every day: search a name, filter by date down the right-hand side, tick the rows
+you want, then choose **Delete selected day logs** and Go. Participants and
+weekly notes have the same screens. This is the safest way — you see exactly
+what goes before it goes.
+
+### Deleting in bulk — one-line commands
+
+For anything larger, in a Bash console. **These run immediately and cannot be
+undone**, so take the backup above first.
+
+```bash
+cd ~/dopamindetox && workon detox-venv
+```
+
+One person's days, keeping their account:
+
+```bash
+python manage.py shell -c "
+from tracker.models import DayLog
+print(DayLog.objects.filter(participant__full_name='Ziaul Haq').delete())"
+```
+
+One date, for everyone:
+
+```bash
+python manage.py shell -c "
+from tracker.models import DayLog
+print(DayLog.objects.filter(date='2026-09-15').delete())"
+```
+
+A range of dates:
+
+```bash
+python manage.py shell -c "
+from tracker.models import DayLog
+print(DayLog.objects.filter(date__gte='2026-09-11', date__lte='2026-09-20').delete())"
+```
+
+Remove somebody completely — their account and their days — while leaving their
+name on the list so they can claim it again:
+
+```bash
+python manage.py shell -c "
+from tracker.models import Participant, DayLog
+p = Participant.objects.get(full_name='Omar Faruk')
+user = p.user
+p.user = None; p.save()
+print(DayLog.objects.filter(participant=p).delete())
+user.delete()"
+```
+
+Swap `.delete()` for `.count()` on any of these to see how many rows it would
+remove before you remove them.
+
+### Wiping everything
+
+```bash
+python manage.py reset_challenge          # says what would go
+python manage.py reset_challenge --yes    # every day log and weekly note
+```
+
+Accounts and the roster survive, so nobody has to sign up twice.
 
 ---
 

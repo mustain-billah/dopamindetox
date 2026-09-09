@@ -631,3 +631,76 @@ class TrialRunTests(Base):
         self.me.refresh_from_db()
         self.assertFalse(self.me.is_claimed)
         self.assertEqual(Participant.objects.filter(user__isnull=False).count(), 0)
+
+
+class MissingDayTests(Base):
+    """Forgetting a day should be obvious and one tap to fix."""
+
+    def setUp(self):
+        super().setUp()
+        self.me = self.join("Me", "me@example.com")
+        self.client.force_login(self.me.user)
+
+    WINDOW = dict(CHALLENGE_START=dt.date.today() - dt.timedelta(days=5),
+                  CHALLENGE_END=dt.date.today() + dt.timedelta(days=117))
+
+    def full_day(self, **overrides):
+        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
+                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data.update(overrides)
+        return data
+
+    @override_settings(**WINDOW)
+    def test_every_gap_is_listed_with_a_link(self):
+        start = dt.date.today() - dt.timedelta(days=5)
+        for offset in (0, 2, 5):                       # fill three of the six days
+            self.log(self.me, start + dt.timedelta(days=offset))
+        response = self.client.get(reverse("today"))
+        missing = response.context["missing_days"]
+        self.assertEqual(missing, [start + dt.timedelta(days=o) for o in (1, 3, 4)])
+        self.assertEqual(response.context["missed_days"], 3)
+        for d in missing:
+            self.assertContains(response, reverse("day", args=[d.isoformat()]))
+
+    @override_settings(**WINDOW)
+    def test_days_still_ahead_are_never_called_missing(self):
+        response = self.client.get(reverse("today"))
+        self.assertEqual(len(response.context["missing_days"]), 6)   # start..today
+        tomorrow = dt.date.today() + dt.timedelta(days=1)
+        self.assertNotIn(tomorrow, response.context["missing_days"])
+
+    @override_settings(**WINDOW)
+    def test_filling_a_gap_removes_it_from_the_list(self):
+        gap = (dt.date.today() - dt.timedelta(days=3))
+        self.assertIn(gap, self.client.get(reverse("today")).context["missing_days"])
+        self.client.post(reverse("day", args=[gap.isoformat()]), self.full_day(news="Y"))
+        response = self.client.get(reverse("today"))
+        self.assertNotIn(gap, response.context["missing_days"])
+        card = services.build_scorecard(self.me)
+        self.assertEqual(card.used_days, 1)          # and it counts, backdated
+
+    @override_settings(**WINDOW)
+    def test_past_squares_link_to_their_day_and_future_ones_do_not(self):
+        body = self.client.get(reverse("today")).content.decode()
+        yesterday = dt.date.today() - dt.timedelta(days=1)
+        tomorrow = dt.date.today() + dt.timedelta(days=1)
+        self.assertIn('href="' + reverse("day", args=[yesterday.isoformat()]) + '"', body)
+        self.assertNotIn('href="' + reverse("day", args=[tomorrow.isoformat()]) + '"', body)
+
+    @override_settings(**WINDOW)
+    def test_the_gap_list_is_capped_but_says_how_many_more(self):
+        with self.settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=20),
+                           CHALLENGE_END=dt.date.today() + dt.timedelta(days=102)):
+            response = self.client.get(reverse("today"))
+            self.assertEqual(len(response.context["missing_days"]), 12)
+            self.assertEqual(response.context["more_missing"], 9)   # 21 days, 12 shown
+            self.assertContains(response, "and 9 more")
+
+    @override_settings(**WINDOW)
+    def test_no_gap_list_when_everything_is_filled_in(self):
+        start = dt.date.today() - dt.timedelta(days=5)
+        for offset in range(6):
+            self.log(self.me, start + dt.timedelta(days=offset))
+        response = self.client.get(reverse("today"))
+        self.assertEqual(response.context["missing_days"], [])
+        self.assertNotContains(response, "Days you have not filled in")
