@@ -9,7 +9,14 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from . import services
-from .models import DayLog, Mark, Participant, WeeklyNote, total_days
+from .models import (
+    CATEGORY_KEYS,
+    DayLog,
+    Mark,
+    Participant,
+    WeeklyNote,
+    total_days,
+)
 
 START = dt.date(2026, 9, 11)
 END = dt.date(2027, 1, 11)
@@ -28,9 +35,7 @@ class Base(TestCase):
         return Participant.objects.create(user=user, full_name=name, dept=dept)
 
     def log(self, participant, date, **marks):
-        fields = dict.fromkeys(
-            ["youtube", "facebook", "instagram", "news", "other", "watching"], "N"
-        )
+        fields = dict.fromkeys(CATEGORY_KEYS, "N")
         said_no = marks.pop("said_no", 0)
         fields.update(marks)
         return DayLog.objects.create(
@@ -228,8 +233,8 @@ class OwnershipTests(Base):
         self.client.force_login(self.me.user)
 
     def full_day(self, **overrides):
-        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
-                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data = dict.fromkeys(CATEGORY_KEYS, "N")
+        data.update({"said_no": 0, "instead": "", "reason": ""})
         data.update(overrides)
         return data
 
@@ -497,8 +502,8 @@ class ChallengeWindowViewTests(Base):
         self.client.force_login(self.me.user)
 
     def full_day(self, **overrides):
-        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
-                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data = dict.fromkeys(CATEGORY_KEYS, "N")
+        data.update({"said_no": 0, "instead": "", "reason": ""})
         data.update(overrides)
         return data
 
@@ -557,8 +562,8 @@ class AlreadyFilledInTests(Base):
     def test_a_filled_day_says_so_and_offers_an_update(self):
         self.client.post(
             reverse("day", args=[dt.date.today().isoformat()]),
-            {"youtube": "W", "facebook": "N", "instagram": "N", "news": "N",
-             "other": "N", "watching": "N", "said_no": 2, "instead": "walked", "reason": "lecture"},
+            dict(dict.fromkeys(CATEGORY_KEYS, "N"),
+                 youtube="W", said_no=2, instead="walked", reason="lecture"),
         )
         response = self.client.get(reverse("today"))
         self.assertContains(response, "Filled in already")
@@ -646,8 +651,8 @@ class MissingDayTests(Base):
                   CHALLENGE_END=dt.date.today() + dt.timedelta(days=117))
 
     def full_day(self, **overrides):
-        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
-                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data = dict.fromkeys(CATEGORY_KEYS, "N")
+        data.update({"said_no": 0, "instead": "", "reason": ""})
         data.update(overrides)
         return data
 
@@ -842,8 +847,8 @@ class EvidenceTests(Base):
         self.url = reverse("day", args=[dt.date.today().isoformat()])
 
     def answers(self, **overrides):
-        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
-                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data = dict.fromkeys(CATEGORY_KEYS, "N")
+        data.update({"said_no": 0, "instead": "", "reason": ""})
         data.update(overrides)
         return data
 
@@ -923,8 +928,8 @@ class NotSavedWarningTests(Base):
         self.url = reverse("day", args=[dt.date.today().isoformat()])
 
     def answers(self, **overrides):
-        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
-                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data = dict.fromkeys(CATEGORY_KEYS, "N")
+        data.update({"said_no": 0, "instead": "", "reason": ""})
         data.update(overrides)
         return data
 
@@ -1020,3 +1025,115 @@ class NoScreenshotFieldTests(Base):
 
     def test_the_model_has_no_evidence_field(self):
         self.assertNotIn("evidence", [f.name for f in DayLog._meta.get_fields()])
+
+
+class MessagingTests(Base):
+    """WhatsApp, Messenger and Telegram: a phone, not a feed."""
+
+    WINDOW = dict(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END)
+
+    def setUp(self):
+        self.me = self.join("Me", "me@example.com")
+        self.client.force_login(self.me.user)
+        self.url = reverse("day", args=[dt.date.today().isoformat()])
+
+    def answers(self, **overrides):
+        data = dict.fromkeys(CATEGORY_KEYS, "N")
+        data.update({"said_no": 0, "instead": "", "reason": ""})
+        data.update(overrides)
+        return data
+
+    def test_the_form_asks_about_messaging_apps(self):
+        with self.settings(**self.WINDOW):
+            response = self.client.get(reverse("today"))
+        self.assertContains(response, 'name="messaging"')
+        self.assertContains(response, "Messaging apps")
+        self.assertContains(response, "WhatsApp, Messenger, Telegram")
+
+    def test_the_answers_are_worded_for_messaging_not_no_and_yes(self):
+        """"No" would be a lie on a row where talking is allowed."""
+        with self.settings(**self.WINDOW):
+            body = self.client.get(reverse("today")).content.decode()
+        row = body.split('id="messaging_N"', 1)[1].split('id="messaging_Y"', 1)[0]
+        self.assertIn(">No<", row)
+        self.assertIn("Communication only", row)
+        self.assertNotIn("Study or work", row)
+        self.assertIn(">Others<", body)
+
+    def test_every_other_row_still_says_no_and_yes(self):
+        with self.settings(**self.WINDOW):
+            body = self.client.get(reverse("today")).content.decode()
+        for key in ["youtube", "facebook", "instagram", "news", "other", "watching"]:
+            row = body.split(f'id="{key}_N"', 1)[1].split(f'id="{key}_W"', 1)[0]
+            self.assertIn(">No<", row, key)
+
+    def test_talking_only_is_a_clean_day(self):
+        with self.settings(**self.WINDOW):
+            self.client.post(self.url, self.answers(messaging="N"))
+        log = DayLog.objects.get(participant=self.me)
+        self.assertEqual(log.messaging, "N")
+        self.assertTrue(log.is_clean)
+
+    def test_status_and_forwarded_videos_are_a_slip(self):
+        with self.settings(**self.WINDOW):
+            self.client.post(self.url, self.answers(messaging="Y"))
+        log = DayLog.objects.get(participant=self.me)
+        self.assertTrue(log.broke_rule)
+        self.assertEqual(log.get_status_display_short(), "a slip")
+
+    def test_communication_only_is_a_clean_day_needing_no_reason(self):
+        with self.settings(**self.WINDOW):
+            self.client.post(self.url, self.answers(messaging="C"))
+        log = DayLog.objects.get(participant=self.me)
+        self.assertEqual(log.messaging, "C")
+        self.assertTrue(log.is_clean)
+        self.assertEqual(log.reason, "")
+
+    def test_study_or_work_is_not_offered_on_this_row(self):
+        """A job circular someone sent you is communication, not a work exception."""
+        with self.settings(**self.WINDOW):
+            refused = self.client.post(self.url, self.answers(messaging="W"))
+        self.assertEqual(refused.status_code, 200)
+        self.assertFalse(DayLog.objects.filter(participant=self.me).exists())
+
+    def test_no_and_communication_only_score_the_same(self):
+        quiet = self.join("Quiet", "quiet@example.com")
+        chatty = self.join("Chatty", "chatty@example.com")
+        with self.settings(**self.WINDOW):
+            a = services.build_scorecard(
+                quiet, [self.log(quiet, LIVE_START, messaging="N")], today=LIVE_START)
+            b = services.build_scorecard(
+                chatty, [self.log(chatty, LIVE_START, messaging="C")], today=LIVE_START)
+        self.assertEqual((a.clean_days, a.work_days, a.used_days), (1, 0, 0))
+        self.assertEqual((b.clean_days, b.work_days, b.used_days), (1, 0, 0))
+        self.assertEqual(a.rank_key[1:4], b.rank_key[1:4])
+
+    def test_messenger_chat_is_not_counted_under_facebook(self):
+        """And it gets its own line, not tacked onto the end of the help."""
+        with self.settings(**self.WINDOW):
+            body = self.client.get(reverse("today")).content.decode()
+        self.assertIn(
+            '<div class="help note">Messenger chat belongs on the messaging row '
+            'below, not here.</div>',
+            body,
+        )
+
+    def test_telegram_channels_moved_off_the_other_apps_row(self):
+        with self.settings(**self.WINDOW):
+            body = self.client.get(reverse("today")).content.decode()
+        other_help = body.split('Other apps', 1)[1].split('</div>', 2)[0]
+        self.assertNotIn("Telegram", other_help)
+
+    def test_the_grid_now_carries_seven_marks_a_day(self):
+        self.log(self.me, LIVE_START, messaging="Y")
+        with self.settings(**self.WINDOW):
+            response = self.client.get(reverse("my_record"))
+        self.assertEqual(len(list(DayLog.objects.get(participant=self.me).rows())), 7)
+        self.assertContains(response, "Messaging apps")
+
+    def test_the_rules_page_states_the_messaging_rule(self):
+        body = self.client.get(reverse("rules")).content.decode()
+        for phrase in ["a phone, not a feed", "Status and Stories", "Channels",
+                       "because they were forwarded", "Messenger is counted here",
+                       "nobody has to claim they"]:
+            self.assertIn(phrase, body, phrase)

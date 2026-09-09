@@ -114,13 +114,15 @@ input[type=number]{max-width:110px;font-family:var(--mono)}
 .q:first-of-type{border-top:none;padding-top:4px}
 .q .name{font-weight:600}
 .q .help{font-size:13px;color:var(--ink-3);line-height:1.5}
+.q .help.note{margin-top:3px}
 .pick{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;background:var(--ground)}
 .pick label{cursor:pointer;padding:8px 14px;font-size:14px;color:var(--ink-2);border-left:1px solid var(--line-2);white-space:nowrap}
 .pick label:first-of-type{border-left:none}
 .pick input{position:absolute;opacity:0;pointer-events:none}
 .pick input:focus-visible + label{outline:2px solid var(--no);outline-offset:-2px}
 .pick input:checked + label{font-weight:700}
-.pick input.N:checked + label{background:var(--no-soft);color:var(--no)}
+.pick input.N:checked + label,
+.pick input.C:checked + label{background:var(--no-soft);color:var(--no)}
 .pick input.W:checked + label{background:var(--work-soft);color:var(--work)}
 .pick input.Y:checked + label{background:var(--yes-soft);color:var(--yes)}
 
@@ -148,7 +150,7 @@ input[type=number]{max-width:110px;font-family:var(--mono)}
 .cal a{text-decoration:none}
 .cal a:hover{outline:2px solid var(--ink-2);outline-offset:1px}
 .cal a:focus-visible{outline:2px solid var(--no);outline-offset:1px}
-.cal .N{background:var(--no)} .cal .W{background:var(--work)} .cal .Y{background:var(--yes)}
+.cal .N,.cal .C{background:var(--no)} .cal .W{background:var(--work)} .cal .Y{background:var(--yes)}
 .cal a.missing{background:var(--blank);box-shadow:inset 0 0 0 1px var(--line-2)}
 .cal .future{background:var(--blank);opacity:.4}
 .cal .now{box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--ink-2)}
@@ -176,7 +178,7 @@ tr.me td{background:var(--surface-2)}
 .tag.out{border-color:var(--yes);color:var(--yes)}
 .marks{display:flex;gap:3px}
 .marks i{width:13px;height:13px;border-radius:3px;background:var(--blank);display:block}
-.marks i.N{background:var(--no)} .marks i.W{background:var(--work)} .marks i.Y{background:var(--yes)}
+.marks i.N,.marks i.C{background:var(--no)} .marks i.W{background:var(--work)} .marks i.Y{background:var(--yes)}
 td.nowrap{white-space:nowrap}
 td .dept{font-size:12px;color:var(--ink-3);display:block}
 .who{display:flex;flex-direction:column}
@@ -210,7 +212,10 @@ ul.plain li b{color:var(--ink);font-weight:600}
   /* One question per row, the three answers filling the width as real targets. */
   .q{grid-template-columns:1fr;gap:10px}
   .pick{width:100%}
-  .pick label{flex:1;text-align:center;padding:12px 6px;font-size:14px}
+  /* Let a long answer wrap rather than run off the pill — the messaging row
+     says "Communication only", which does not fit a third of a phone. */
+  .pick label{flex:1;text-align:center;padding:13px 6px;font-size:14px;
+    white-space:normal;line-height:1.3;display:flex;align-items:center;justify-content:center}
 
   /* 16px stops iOS zooming the page when a field is focused. */
   input[type=text],input[type=email],input[type=password],input[type=number],select{font-size:16px}

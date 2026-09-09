@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import NamedTuple
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -13,21 +14,76 @@ class Mark(models.TextChoices):
     """What happened with one thing on one day."""
 
     NO = "N", "No"                    # did not touch it
+    TALK = "C", "Communication only"  # messaging apps used as a phone, nothing more
     WORK = "W", "Study or work"       # used it, but only for study or a job
     YES = "Y", "Yes"                  # used it
 
 
-#: key, label shown on the page, one line of help
+#: Scoring reads only two of these. YES is a slip, WORK is a study-or-work day,
+#: and everything else — NO and TALK alike — is a clean day. TALK exists so that
+#: somebody who used no messaging app at all is not made to claim they chatted.
+CLEAN_MARKS = (Mark.NO, Mark.TALK)
+
+
+class Option(NamedTuple):
+    """One button on one question."""
+
+    value: str
+    label: str
+
+
+#: What almost every row offers.
+DEFAULT_OPTIONS = (
+    Option(Mark.NO, "No"),
+    Option(Mark.WORK, "Study or work"),
+    Option(Mark.YES, "Yes"),
+)
+
+
+class Category(NamedTuple):
+    """One question on the daily form.
+
+    `options` names the buttons. Almost every row offers the same three — no,
+    only for study or work, yes — but messaging apps are allowed for talking, so
+    that row offers its own set instead.
+    """
+
+    key: str
+    label: str
+    help: str
+    options: tuple[Option, ...] = DEFAULT_OPTIONS
+    #: A second line of help, set apart on its own line where that reads better.
+    note: str = ""
+
+    @property
+    def values(self) -> list[str]:
+        return [o.value for o in self.options]
+
+    @property
+    def choices(self) -> list[tuple[str, str]]:
+        return [(o.value, o.label) for o in self.options]
+
+
 CATEGORIES = [
-    ("youtube", "YouTube", "Allowed only for study or work you had to do."),
-    ("facebook", "Facebook", "No exceptions agreed for this one."),
-    ("instagram", "Instagram, X, LinkedIn", "LinkedIn is allowed for a job search."),
-    ("news", "Newspapers", "Online and print, sports pages included. News or industry "
-                           "updates read for a job or official duty count as study or work."),
-    ("other", "Other apps", "Reels, TikTok, Telegram channels, podcasts, anything similar."),
-    ("watching", "Videos, films, games", "On any device — phone, laptop or PC."),
+    Category("youtube", "YouTube", "Allowed only for study or work you had to do."),
+    Category("facebook", "Facebook",
+             "The app itself — feed, Stories, Watch, Marketplace.",
+             note="Messenger chat belongs on the messaging row below, not here."),
+    Category("instagram", "Instagram, X, LinkedIn", "LinkedIn is allowed for a job search."),
+    Category("messaging", "Messaging apps",
+             "WhatsApp, Messenger, Telegram.",
+             (Option(Mark.NO, "No"),
+              Option(Mark.TALK, "Communication only"),
+              Option(Mark.YES, "Others")),
+             note="Calls, chat and anything a person sent you are fine. Status, "
+                  "Channels and forwarded videos are “Others”."),
+    Category("news", "Newspapers", "Online and print, sports pages included. News or industry "
+                                   "updates read for a job or official duty count as study or work."),
+    Category("other", "Other apps", "Reels, TikTok, podcasts, anything similar."),
+    Category("watching", "Videos, films, games", "On any device — phone, laptop or PC."),
 ]
-CATEGORY_KEYS = [key for key, _, _ in CATEGORIES]
+CATEGORY_KEYS = [c.key for c in CATEGORIES]
+CATEGORY_BY_KEY = {c.key: c for c in CATEGORIES}
 
 
 def challenge_start() -> dt.date:
@@ -121,6 +177,11 @@ class DayLog(models.Model):
     youtube = models.CharField(max_length=1, choices=Mark.choices, default=Mark.NO)
     facebook = models.CharField(max_length=1, choices=Mark.choices, default=Mark.NO)
     instagram = models.CharField(max_length=1, choices=Mark.choices, default=Mark.NO)
+    # NO here means "talking only", not "did not open it" — see Category.answers.
+    messaging = models.CharField(
+        max_length=1, default=Mark.NO,
+        choices=[(Mark.NO, "No"), (Mark.TALK, "Communication only"), (Mark.YES, "Others")],
+    )
     news = models.CharField(max_length=1, choices=Mark.choices, default=Mark.NO)
     other = models.CharField(max_length=1, choices=Mark.choices, default=Mark.NO)
     watching = models.CharField(max_length=1, choices=Mark.choices, default=Mark.NO)
@@ -152,7 +213,7 @@ class DayLog(models.Model):
             return Mark.YES
         if Mark.WORK in marks:
             return Mark.WORK
-        return Mark.NO
+        return Mark.NO          # NO and TALK both land here — see CLEAN_MARKS
 
     def get_status_display_short(self) -> str:
         return {
@@ -170,8 +231,11 @@ class DayLog(models.Model):
         return self.status == Mark.NO
 
     def rows(self):
-        for key, label, help_text in CATEGORIES:
-            yield {"key": key, "label": label, "help": help_text, "value": getattr(self, key)}
+        for c in CATEGORIES:
+            value = getattr(self, c.key)
+            chosen = next((o.label for o in c.options if o.value == value), value)
+            yield {"key": c.key, "label": c.label, "help": c.help, "note": c.note,
+                   "options": c.options, "value": value, "answer": chosen}
 
 
 class WeeklyNote(models.Model):

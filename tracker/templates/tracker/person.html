@@ -73,7 +73,7 @@
           <td>
             <div class="marks">
               {% for row in log.rows %}
-                <i class="{{ row.value }}" title="{{ row.label }} — {% if row.value == 'N' %}no{% elif row.value == 'W' %}study or work{% else %}yes{% endif %}"></i>
+                <i class="{{ row.value }}" title="{{ row.label }} — {{ row.answer|lower }}"></i>
               {% endfor %}
             </div>
           </td>
@@ -88,8 +88,8 @@
     </table>
   </div>
   <p class="tiny muted" style="margin-top:14px">
-    Six marks per day, left to right:
-    {% for key, label, help in categories %}{{ label }}{% if not forloop.last %} · {% endif %}{% endfor %}.
+    One mark per question, left to right:
+    {% for c in categories %}{{ c.label }}{% if not forloop.last %} · {% endif %}{% endfor %}.
     Hover a mark to see which one it is.
   </p>
 </div>

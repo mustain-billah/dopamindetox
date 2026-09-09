@@ -29,7 +29,7 @@
   </p>
   {% else %}
   <p class="todo">
-    <b>Not counted yet.</b> Answer the six questions and press Save at the bottom.
+    <b>Not counted yet.</b> Answer every question and press Save at the bottom.
   </p>
   {% endif %}
   <p class="tiny muted" style="margin:0 0 14px">
@@ -41,11 +41,10 @@
     <div>
       <div class="name">{{ row.label }}</div>
       <div class="help">{{ row.help }}</div>
+      {% if row.note %}<div class="help note">{{ row.note }}</div>{% endif %}
     </div>
     <div class="pick" role="radiogroup" aria-label="{{ row.label }}">
-      <input type="radio" class="N" name="{{ row.key }}" value="N" id="{{ row.key }}_N" {% if row.value == "N" %}checked{% endif %}><label for="{{ row.key }}_N">No</label>
-      <input type="radio" class="W" name="{{ row.key }}" value="W" id="{{ row.key }}_W" {% if row.value == "W" %}checked{% endif %}><label for="{{ row.key }}_W">Study or work</label>
-      <input type="radio" class="Y" name="{{ row.key }}" value="Y" id="{{ row.key }}_Y" {% if row.value == "Y" %}checked{% endif %}><label for="{{ row.key }}_Y">Yes</label>
+      {% for opt in row.options %}<input type="radio" class="{{ opt.value }}" name="{{ row.key }}" value="{{ opt.value }}" id="{{ row.key }}_{{ opt.value }}" {% if row.value == opt.value %}checked{% endif %}><label for="{{ row.key }}_{{ opt.value }}">{{ opt.label }}</label>{% endfor %}
     </div>
   </div>
   {% endfor %}
