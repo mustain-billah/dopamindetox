@@ -20,6 +20,8 @@ from .models import (
     WeeklyNote,
     challenge_end,
     challenge_start,
+    counts_toward_challenge,
+    practice_from,
     total_days,
 )
 
@@ -48,9 +50,13 @@ def signup(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def today(request: HttpRequest) -> HttpResponse:
-    """The daily form — or a waiting page when today is outside the challenge."""
+    """The daily form, or the closing page once the challenge is over.
+
+    Before the start day the form is still shown, clearly marked as practice, so
+    the group can try the app out. Practice answers are saved but never scored.
+    """
     now = dt.date.today()
-    if now < challenge_start() or now > challenge_end():
+    if now > challenge_end():
         return render(
             request,
             "tracker/waiting.html",
@@ -70,11 +76,10 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
     if date > dt.date.today():
         messages.error(request, "You cannot fill in a day that has not happened yet.")
         return redirect("today")
-    if date < challenge_start():
+    if date < practice_from():
         messages.error(
             request,
-            f"The challenge starts on {challenge_start():%-d %B %Y}. "
-            "There is nothing to fill in before then.",
+            f"That is too long ago. The challenge starts on {challenge_start():%-d %B %Y}.",
         )
         return redirect("today")
     if date > challenge_end():
@@ -111,7 +116,8 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
             "date": date,
             "is_today": date == dt.date.today(),
             "was_saved": was_saved,
-            "prev_day": date - dt.timedelta(days=1) if date > challenge_start() else None,
+            "is_practice": not counts_toward_challenge(date),
+            "prev_day": date - dt.timedelta(days=1) if date > practice_from() else None,
             "next_day": date + dt.timedelta(days=1) if date < dt.date.today() else None,
             "card": card,
             "elapsed": elapsed,

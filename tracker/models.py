@@ -41,6 +41,20 @@ def total_days() -> int:
     return (challenge_end() - challenge_start()).days + 1
 
 
+#: How far before the start day people may try the form out. Anything logged in
+#: that window is practice: it is saved, but never scored and never drawn on the
+#: grid, so the group can test the app before it counts for real.
+PRACTICE_DAYS = 30
+
+
+def practice_from() -> dt.date:
+    return challenge_start() - dt.timedelta(days=PRACTICE_DAYS)
+
+
+def counts_toward_challenge(day: dt.date) -> bool:
+    return challenge_start() <= day <= challenge_end()
+
+
 class Participant(models.Model):
     """A person in the challenge.
 

@@ -342,10 +342,11 @@ class BreakdownTests(Base):
 
     @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=5),
                        CHALLENGE_END=dt.date.today() + dt.timedelta(days=100))
-    def test_before_the_start_there_is_no_day_page_to_miss_days_on(self):
+    def test_before_the_start_no_day_has_gone_by_so_none_are_missed(self):
         response = self.client.get(reverse("today"))
-        self.assertTemplateUsed(response, "tracker/waiting.html")
-        self.assertNotIn("missed_days", response.context)
+        self.assertTrue(response.context["is_practice"])
+        self.assertEqual(response.context["elapsed"], 0)
+        self.assertEqual(response.context["missed_days"], 0)
 
     def test_the_day_page_no_longer_says_streak_clean_or_said_no(self):
         response = self.client.get(reverse("today"))
@@ -503,12 +504,13 @@ class ChallengeWindowViewTests(Base):
 
     @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
                        CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
-    def test_before_it_starts_you_get_a_countdown_not_a_form(self):
+    def test_before_it_starts_the_form_is_there_but_marked_as_practice(self):
         response = self.client.get(reverse("today"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "tracker/waiting.html")
-        self.assertContains(response, "2 days to go")
-        self.assertNotContains(response, 'name="youtube"')
+        self.assertTemplateUsed(response, "tracker/day.html")
+        self.assertContains(response, 'name="youtube"')
+        self.assertContains(response, "nothing here counts")
+        self.assertTrue(response.context["is_practice"])
 
     @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
                        CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
@@ -519,19 +521,58 @@ class ChallengeWindowViewTests(Base):
 
     @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
                        CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
-    def test_a_day_before_the_start_cannot_be_filled_in(self):
-        yesterday = (dt.date.today() - dt.timedelta(days=1)).isoformat()
-        response = self.client.post(reverse("day", args=[yesterday]), self.full_day(), follow=True)
-        self.assertEqual(DayLog.objects.count(), 0)
-        self.assertContains(response, "The challenge starts on")
+    @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
+    def test_practice_shows_one_banner_not_two(self):
+        body = self.client.get(reverse("today")).content.decode()
+        self.assertIn("nothing here counts", body)
+        self.assertNotIn("Not counted yet", body)
+        self.assertNotIn("Day 0 of", body)
+        self.assertIn("Practice · starts", body)
+
+    def test_a_practice_day_is_saved_but_scores_nothing(self):
+        self.client.post(reverse("day", args=[dt.date.today().isoformat()]),
+                         self.full_day(youtube="Y", said_no=4))
+        self.assertEqual(DayLog.objects.count(), 1)          # kept, so it can be reviewed
+        card = services.build_scorecard(self.me)
+        self.assertEqual(card.logged_days, 0)                # but counts for nothing
+        self.assertEqual(card.used_days, 0)
+        self.assertEqual(card.streak, 0)
+        self.assertEqual(card.said_no, 0)
 
     @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
                        CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
-    def test_the_redirect_before_the_start_does_not_loop(self):
-        response = self.client.get(reverse("day", args=["2020-01-01"]), follow=True)
-        self.assertEqual(response.status_code, 200)
+    def test_practice_days_do_not_reach_the_board(self):
+        self.client.post(reverse("day", args=[dt.date.today().isoformat()]),
+                         self.full_day(facebook="Y"))
+        totals = services.group_totals(services.leaderboard())
+        self.assertEqual(totals["clean_days"], 0)
+        mine = next(c for c in services.leaderboard() if c.participant.pk == self.me.pk)
+        self.assertEqual(mine.used_days, 0)
+        self.assertEqual(mine.logged_days, 0)
+
+    @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
+    def test_a_date_long_before_the_practice_window_is_refused(self):
+        response = self.client.post(reverse("day", args=["2020-01-01"]),
+                                    self.full_day(), follow=True)
+        self.assertEqual(DayLog.objects.count(), 0)
+        self.assertContains(response, "That is too long ago")
         self.assertEqual(len(response.redirect_chain), 1)
-        self.assertTemplateUsed(response, "tracker/waiting.html")
+
+    @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
+    def test_clear_practice_removes_the_test_data(self):
+        from django.core.management import call_command
+        from io import StringIO
+        self.client.post(reverse("day", args=[dt.date.today().isoformat()]), self.full_day())
+        self.assertEqual(DayLog.objects.count(), 1)
+        out = StringIO()
+        call_command("clear_practice", stdout=out)              # dry run first
+        self.assertEqual(DayLog.objects.count(), 1)
+        self.assertIn("Run again with --yes", out.getvalue())
+        call_command("clear_practice", "--yes", stdout=StringIO())
+        self.assertEqual(DayLog.objects.count(), 0)
 
     @override_settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=200),
                        CHALLENGE_END=dt.date.today() - dt.timedelta(days=2))
@@ -545,11 +586,15 @@ class ChallengeWindowViewTests(Base):
 
     @override_settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=3),
                        CHALLENGE_END=dt.date.today() + dt.timedelta(days=119))
-    def test_the_first_day_has_no_previous_day_link(self):
-        first = (dt.date.today() - dt.timedelta(days=3)).isoformat()
-        response = self.client.get(reverse("day", args=[first]))
+    def test_you_cannot_page_back_past_the_practice_window(self):
+        from .models import practice_from
+        edge = practice_from().isoformat()
+        response = self.client.get(reverse("day", args=[edge]))
         self.assertIsNone(response.context["prev_day"])
         self.assertNotContains(response, "Previous day")
+        # and the challenge's first day still pages back into practice
+        first = (dt.date.today() - dt.timedelta(days=3)).isoformat()
+        self.assertIsNotNone(self.client.get(reverse("day", args=[first])).context["prev_day"])
 
 
 class AlreadyFilledInTests(Base):

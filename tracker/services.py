@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from dataclasses import dataclass, field
 
-from .models import Mark, Participant, challenge_end, challenge_start
+from .models import Mark, Participant, challenge_end, challenge_start, counts_toward_challenge
 
 
 def clamp(day: dt.date) -> dt.date:
@@ -70,7 +70,11 @@ def build_scorecard(participant: Participant, logs=None, today: dt.date | None =
     logs = list(logs if logs is not None else participant.logs.all())
     card = Scorecard(participant=participant)
 
+    # Practice days — anything logged before the challenge starts — are kept in
+    # the database but never scored, so testing the app cannot inflate a total.
     for log in logs:
+        if not counts_toward_challenge(log.date):
+            continue
         status = log.status
         card.by_date[log.date] = status
         card.said_no += log.said_no

@@ -21,10 +21,11 @@ anyone actually did, and the challenge says so out loud.
 - **Today** — six questions, each answered **No**, **Study or work**, or
   **Yes**. Plus how many times you stopped yourself, what you did instead,
   and a reason if you used something.
-- **Before it starts, and after it ends**, the daily page is a countdown or a
-  closing note instead of a form. Days outside 11 Sep 2026 – 11 Jan 2027 cannot
-  be filled in at all — otherwise they would count toward your totals while
-  being invisible in the 123-day grid.
+- **Before it starts** the form is there and works, clearly marked as practice,
+  so the group can try the app and suggest changes. Practice answers are saved
+  but never scored and never drawn on the 123-day grid — testing cannot inflate
+  anyone's totals. `python manage.py clear_practice --yes` wipes them before the
+  real start. After 11 January the form closes with a summary page.
 - **Coming back to a day you have done** says so plainly, shows what it counted
   as, and the button reads Update rather than Save.
 - **A day only counts once you press Save.** Opening the page changes nothing —
@@ -59,6 +60,20 @@ Open <http://127.0.0.1:8000/rules/>, then sign up at `/signup/`.
 
 See **[DEPLOY.md](DEPLOY.md)** — a numbered walkthrough for the free
 PythonAnywhere account, with the free-tier limits and a troubleshooting table.
+
+## Practice before the start
+
+Anything logged before `CHALLENGE_START` is practice: kept in the database so
+people can see their own test entries, but skipped by every scoring function, so
+it never reaches a total, a streak or the board. The window is 30 days wide;
+dates before that are refused outright.
+
+Clear it before the challenge begins:
+
+```bash
+python manage.py clear_practice          # says how many, deletes nothing
+python manage.py clear_practice --yes    # deletes them
+```
 
 ## The roster
 

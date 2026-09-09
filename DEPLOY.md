@@ -213,6 +213,23 @@ If somebody is missing from the list, add them to `tracker/roster.py`, push,
 
 ---
 
+## Before the real start
+
+Let people try the app in the days before 11 September — the form works and is
+marked as practice, and nothing they enter is scored. On 10 September, clear it
+out in a Bash console:
+
+```bash
+cd ~/dopamindetox
+workon detox-venv
+python manage.py clear_practice          # shows the count, deletes nothing
+python manage.py clear_practice --yes    # deletes them
+```
+
+Then **Reload** in the Web tab. Everyone starts the 11th on zero.
+
+---
+
 ## Updating later
 
 ```bash
