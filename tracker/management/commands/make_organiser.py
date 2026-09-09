@@ -18,6 +18,12 @@ class Command(BaseCommand):
             person = Participant.objects.get(user__email__iexact=email)
         except Participant.DoesNotExist:
             raise CommandError(f"Nobody is signed up with {email}.")
+        if options["undo"] and person.user.is_staff:
+            raise CommandError(
+                f"{person.full_name} is a Django staff account, and staff always "
+                "run the challenge rather than compete in it. Remove their staff "
+                "status in /admin/ first if they should be a competitor."
+            )
         person.is_organiser = not options["undo"]
         person.save(update_fields=["is_organiser"])
         role = "a competitor again" if options["undo"] else "an organiser"

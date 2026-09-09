@@ -195,20 +195,22 @@ part — so use **My name is not on the list** and type it in, or add yourself t
 
 If anything is wrong, the **Error log** link in the Web tab has the traceback.
 
-### Step 9b — make yourself the organiser
+### Step 9b — set who runs it
 
-You are running this, not competing. After claiming a place at `/signup/`, in a
-Bash console:
+You are running this, not competing. Your superuser account is put off the board
+automatically the first time you open a page. Razzak competes **and** helps run
+it, so give him the second power without taking away the first:
 
 ```bash
 cd ~/dopamindetox && workon detox-venv
-python manage.py make_organiser your@email.com
+python manage.py set_role m.a.razzak06025@gmail.com --admin
+python manage.py roles                    # check who is what
 ```
 
-That keeps you off the board and out of its totals, and puts an **Open** link
-beside each person there. Open shows their whole log, including what they wrote
-in "what you did instead" and "reason" — nobody else can see that, and the rules
-page tells participants so.
+`roles` should show you as *runs it, not competing* and Razzak as
+*competing · also runs it*. Both of you get an **Open** link beside each person
+on the board, showing their whole log including what they wrote. The rules page
+tells participants that the organisers can read this.
 
 ### Step 10 — send the link
 

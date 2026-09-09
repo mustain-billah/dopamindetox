@@ -65,10 +65,16 @@ class Participant(models.Model):
     session = models.CharField("Session", max_length=20, blank=True,
                                help_text="For example: 2005-06")
     is_past_student = models.BooleanField("Past student", default=False)
-    is_organiser = models.BooleanField(
-        "Organiser", default=False,
-        help_text="Runs the challenge instead of competing: kept off the board, "
-                  "and can read everyone's notes.",
+    # Two separate things, because somebody can be both. Razzak competes and
+    # also helps run it; Mustain runs it without competing.
+    competes = models.BooleanField(
+        "Competing", default=True,
+        help_text="On the board and in the running for the prize. "
+                  "Turn off for someone who only helps run the challenge.",
+    )
+    can_see_everyone = models.BooleanField(
+        "Can read everyone's log", default=False,
+        help_text="May open any participant and read what they wrote.",
     )
     joined_at = models.DateTimeField(auto_now_add=True)
 
@@ -83,8 +89,14 @@ class Participant(models.Model):
         return self.user_id is not None
 
     @property
-    def competes(self) -> bool:
-        return not self.is_organiser
+    def role(self) -> str:
+        if self.competes and self.can_see_everyone:
+            return "competing · also runs it"
+        if self.can_see_everyone:
+            return "runs it, not competing"
+        if not self.is_claimed:
+            return "not signed in yet"
+        return "competing"
 
     @property
     def where(self) -> str:

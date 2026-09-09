@@ -81,21 +81,44 @@ python manage.py reset_challenge --yes    # deletes every day log and weekly not
 Accounts and the roster survive, so nobody signs up twice. `--accounts` also
 unclaims every place, which is rarely what you want.
 
-## Organisers
+## Who can do what
 
-A participant marked **organiser** runs the challenge instead of competing in
-it. They are left off the board and out of its totals, and they can open any
-participant from the board to read that person's whole log — every day's
-answers, how many times they stopped themselves, what they did instead, and the
-reason they gave. Nobody else can see that, and the rules page says so plainly,
-because people should know before they write anything.
+Two separate things, because one person can be both:
 
-A Django staff account is treated as an organiser automatically. To mark someone
-else, or to undo it:
+- **Competing** — on the board, in the running for the prize.
+- **Can read everyone's log** — may open any participant from the board and see
+  their whole record, including what they wrote in *what you did instead* and
+  *reason*.
+
+So Mustain runs it without competing; Razzak competes **and** helps run it; the
+other seventeen just compete. The rules page tells participants that the people
+organising can read what they write, because they should know before they write
+it.
+
+**Superuser is a different thing again.** Django's `is_staff` / `is_superuser`
+is the key to `/admin/`, the raw database editor. A staff account is also put
+off the board and given the run of the logs — checked on every page load, so an
+account granted staff later is caught the next time it is used.
 
 ```bash
-python manage.py make_organiser someone@example.com
-python manage.py make_organiser someone@example.com --undo
+python manage.py roles                                   # who is what
+
+python manage.py set_role someone@example.com --admin            # can read everyone
+python manage.py set_role someone@example.com --no-admin
+python manage.py set_role someone@example.com --not-competing    # off the board
+python manage.py set_role someone@example.com --competing
+```
+
+Flags combine, and the two settings are independent — `--admin` on its own
+leaves somebody competing. `set_role` refuses to fight the staff rule rather
+than making a change the next page load would undo.
+
+```
+Mustain Billah          runs it, not competing    mustainbillahx@gmail.com · django staff
+Muhammad Abdur Razzak   competing · also runs it  m.a.razzak06025@gmail.com
+Ziaul Haq               competing                 ziaul@example.com
+
+19 on the board (17 of them not signed in yet), 2 can read everyone's log.
 ```
 
 ## The roster

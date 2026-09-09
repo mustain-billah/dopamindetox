@@ -706,83 +706,116 @@ class MissingDayTests(Base):
         self.assertNotContains(response, "Days you have not filled in")
 
 
+
+
 @override_settings(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END)
-class OrganiserTests(Base):
-    """An organiser runs the challenge instead of competing in it."""
+class RoleTests(Base):
+    """Competing and reading everyone's log are separate — somebody can do both."""
 
     def setUp(self):
         super().setUp()
-        self.boss = self.join("The Organiser", "boss@example.com", "ADMIN")
-        self.boss.is_organiser = True
-        self.boss.save()
+        # Mustain: runs it, does not compete, and is Django staff.
+        self.owner = self.join("Mustain Billah", "owner@example.com")
+        self.owner.user.is_staff = True
+        self.owner.user.save()
+        self.owner.competes = False
+        self.owner.can_see_everyone = True
+        self.owner.save()
+        # Razzak: competes AND helps run it.
+        self.razzak = self.join("Muhammad Abdur Razzak", "razzak@example.com", "BGE")
+        self.razzak.can_see_everyone = True
+        self.razzak.save()
+        # An ordinary competitor.
         self.player = self.join("A Player", "player@example.com", "CSE")
-        self.log(self.player, LIVE_START, youtube="W", said_no=3)
-        self.log(self.player, LIVE_START + dt.timedelta(days=1), news="Y")
-        DayLog.objects.filter(participant=self.player, date=LIVE_START).update(
+        self.log(self.player, LIVE_START, youtube="W", said_no=2)
+        DayLog.objects.filter(participant=self.player).update(
             instead="Read 30 pages", reason="Class lecture"
         )
 
-    def test_an_organiser_is_not_on_the_board(self):
-        self.client.force_login(self.boss.user)
-        response = self.client.get(reverse("board"))
-        names = [c.participant.full_name for c in response.context["cards"]]
-        self.assertNotIn("The Organiser", names)
-        self.assertIn("A Player", names)
+    def test_someone_can_compete_and_still_read_everyone(self):
+        self.assertEqual(self.razzak.role, "competing · also runs it")
+        names = [c.participant.full_name for c in services.leaderboard()]
+        self.assertIn("Muhammad Abdur Razzak", names)     # still on the board
+        self.assertNotIn("Mustain Billah", names)         # the other one is not
 
-    def test_an_organiser_is_not_counted_in_the_totals(self):
-        cards = services.leaderboard()
-        self.assertNotIn(self.boss.pk, [c.participant.pk for c in cards])
-        totals = services.group_totals(cards)
-        self.assertEqual(totals["people"], Participant.objects.filter(is_organiser=False).count())
-
-    def test_an_organiser_sees_what_someone_wrote(self):
-        self.client.force_login(self.boss.user)
+        self.client.force_login(self.razzak.user)
         response = self.client.get(reverse("person", args=[self.player.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Read 30 pages")
         self.assertContains(response, "Class lecture")
-        self.assertContains(response, "Stopped themselves")
-        self.assertContains(response, "player@example.com")
 
-    def test_a_normal_participant_cannot_open_anyone(self):
+    def test_a_plain_competitor_still_cannot_read_anyone(self):
         self.client.force_login(self.player.user)
-        other = self.join("Someone Else", "else@example.com")
-        for pk in (self.boss.pk, other.pk, self.player.pk):
-            self.assertEqual(self.client.get(reverse("person", args=[pk])).status_code, 404)
+        self.assertEqual(
+            self.client.get(reverse("person", args=[self.razzak.pk])).status_code, 404
+        )
+        self.assertNotContains(self.client.get(reverse("board")), "Open</a>")
 
-    def test_the_board_shows_open_links_only_to_organisers(self):
-        self.client.force_login(self.player.user)
-        self.assertNotContains(self.client.get(reverse("board")), "/board/%d/" % self.player.pk)
-        self.client.force_login(self.boss.user)
-        self.assertContains(self.client.get(reverse("board")), "/board/%d/" % self.player.pk)
+    def test_open_links_appear_for_both_kinds_of_organiser(self):
+        for who in (self.owner, self.razzak):
+            self.client.force_login(who.user)
+            self.assertContains(
+                self.client.get(reverse("board")), "/board/%d/" % self.player.pk
+            )
 
-    def test_a_django_staff_account_counts_as_an_organiser(self):
-        staff = User.objects.create_user("staff@example.com", "staff@example.com",
-                                         "detox-pass-2026", is_staff=True)
-        self.client.force_login(staff)
-        response = self.client.get(reverse("person", args=[self.player.pk]))
-        self.assertEqual(response.status_code, 200)
-        # and the profile made for them is marked as an organiser, so they stay off the board
-        self.assertTrue(staff.participant.is_organiser)
-        self.assertNotIn("staff@example.com",
-                         [c.participant.user.email for c in services.leaderboard() if c.participant.user])
+    def test_a_staff_account_is_taken_off_the_board_on_sight(self):
+        late = self.join("Late Admin", "late@example.com")
+        self.assertIn("Late Admin", [c.participant.full_name for c in services.leaderboard()])
+        late.user.is_staff = True
+        late.user.save()
+        self.client.force_login(late.user)
+        self.client.get(reverse("today"))
+        late.refresh_from_db()
+        self.assertFalse(late.competes)
+        self.assertTrue(late.can_see_everyone)
+        self.assertNotIn("Late Admin", [c.participant.full_name for c in services.leaderboard()])
 
-    def test_the_rules_page_warns_that_an_organiser_can_read_the_notes(self):
-        response = self.client.get(reverse("rules"))
-        self.assertContains(response, "can open any participant")
-
-    def test_make_organiser_command_both_ways(self):
+    def test_set_role_grants_and_revokes(self):
         from django.core.management import call_command
         from io import StringIO
-        call_command("make_organiser", "player@example.com", stdout=StringIO())
-        self.player.refresh_from_db()
-        self.assertTrue(self.player.is_organiser)
-        call_command("make_organiser", "player@example.com", "--undo", stdout=StringIO())
-        self.player.refresh_from_db()
-        self.assertFalse(self.player.is_organiser)
 
-    def test_make_organiser_refuses_an_unknown_email(self):
+        helper = self.join("Helper", "helper@example.com")
+        call_command("set_role", "helper@example.com", "--admin", stdout=StringIO())
+        helper.refresh_from_db()
+        self.assertTrue(helper.can_see_everyone)
+        self.assertTrue(helper.competes)          # untouched
+        self.assertEqual(helper.role, "competing · also runs it")
+
+        call_command("set_role", "helper@example.com", "--not-competing", stdout=StringIO())
+        helper.refresh_from_db()
+        self.assertEqual(helper.role, "runs it, not competing")
+
+        call_command("set_role", "helper@example.com", "--no-admin", "--competing",
+                     stdout=StringIO())
+        helper.refresh_from_db()
+        self.assertEqual(helper.role, "competing")
+
+    def test_set_role_will_not_fight_the_staff_rule(self):
         from django.core.management import call_command
         from django.core.management.base import CommandError
-        with self.assertRaises(CommandError):
-            call_command("make_organiser", "nobody@example.com")
+        for flag in ("--no-admin", "--competing"):
+            with self.assertRaises(CommandError):
+                call_command("set_role", "owner@example.com", flag)
+
+    def test_set_role_reports_without_changing_when_given_no_flags(self):
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command("set_role", "razzak@example.com", stdout=out)
+        self.assertIn("Nothing changed", out.getvalue())
+        self.razzak.refresh_from_db()
+        self.assertTrue(self.razzak.competes and self.razzak.can_see_everyone)
+
+    def test_roles_listing_counts_the_two_things_separately(self):
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command("roles", stdout=out)
+        text = out.getvalue()
+        self.assertIn("competing · also runs it", text)
+        self.assertIn("runs it, not competing", text)
+        self.assertIn("2 can read everyone's log", text)
+
+    def test_the_rules_page_still_warns_people(self):
+        self.client.force_login(self.player.user)
+        self.assertContains(self.client.get(reverse("rules")), "can open any participant")

@@ -27,19 +27,30 @@ from .models import (
 
 
 def get_participant(request: HttpRequest) -> Participant:
+    """This user's profile, made on the spot if they somehow have none.
+
+    A Django staff account runs the challenge rather than competing in it, so it
+    is put off the board and given the run of everyone's logs — checked on every
+    visit, not only when the profile is made, since staff can be granted later.
+    """
     participant = getattr(request.user, "participant", None)
     if participant is None:
         participant = Participant.objects.create(
             user=request.user,
             full_name=request.user.get_full_name() or request.user.username,
-            # A Django staff account is running the thing, not competing in it.
-            is_organiser=request.user.is_staff,
+            competes=not request.user.is_staff,
+            can_see_everyone=request.user.is_staff,
         )
+    elif request.user.is_staff and not (participant.can_see_everyone and not participant.competes):
+        participant.competes = False
+        participant.can_see_everyone = True
+        participant.save(update_fields=["competes", "can_see_everyone"])
     return participant
 
 
-def is_organiser(participant: Participant, user) -> bool:
-    return participant.is_organiser or user.is_staff
+def can_see_everyone(participant: Participant, user) -> bool:
+    """Reading other people's notes. Separate from whether they compete."""
+    return participant.can_see_everyone or user.is_staff
 
 
 def signup(request: HttpRequest) -> HttpResponse:
@@ -196,16 +207,16 @@ def board(request: HttpRequest) -> HttpResponse:
             "cards": cards,
             "totals": services.group_totals(cards),
             "mine": mine,
-            "organiser": is_organiser(mine, request.user),
+            "can_see_all": can_see_everyone(mine, request.user),
         },
     )
 
 
 @login_required
 def person(request: HttpRequest, pk: int) -> HttpResponse:
-    """One person's whole log, day by day. Organisers only."""
+    """One person's whole log, day by day. Only for those allowed to read it."""
     mine = get_participant(request)
-    if not is_organiser(mine, request.user):
+    if not can_see_everyone(mine, request.user):
         raise Http404("No such page")
 
     them = get_object_or_404(Participant, pk=pk)

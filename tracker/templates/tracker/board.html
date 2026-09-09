@@ -25,7 +25,7 @@
         <tr>
           <th style="width:26px"></th><th>Name</th><th>Status</th>
           <th class="n">In a row</th><th class="n">Nothing</th>
-          <th class="n">Work only</th><th class="n">Slipped</th>{% if organiser %}<th></th>{% endif %}
+          <th class="n">Work only</th><th class="n">Slipped</th>{% if can_see_all %}<th></th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -52,7 +52,7 @@
           {% else %}
           <td class="n muted" colspan="4">has not signed in yet</td>
           {% endif %}
-          {% if organiser %}<td class="n">{% if c.has_joined %}<a class="tiny" href="{% url 'person' c.participant.pk %}">Open</a>{% endif %}</td>{% endif %}
+          {% if can_see_all %}<td class="n">{% if c.has_joined %}<a class="tiny" href="{% url 'person' c.participant.pk %}">Open</a>{% endif %}</td>{% endif %}
         </tr>
       {% empty %}
         <tr><td colspan="8" class="muted">Nobody is on the list yet.</td></tr>
@@ -66,9 +66,9 @@
       <b>Work only</b> — days used just for study or a job.
       <b>Slipped</b> — days something was used.</span>
     <span>Ordered by fewest slips, then fewest work-only days, then most days filled in.
-      Organisers are not on this board.</span>
-    {% if organiser %}<span><b>You are an organiser</b> — Open shows one person's full log,
-      including what they wrote. Nobody else can see that.</span>{% endif %}
+      People who only help run the challenge are not on it.</span>
+    {% if can_see_all %}<span><b>You help run this</b> — Open shows one person's full log,
+      including what they wrote. Only the organisers can see that.</span>{% endif %}
   </div>
 </div>
 {% endblock %}
