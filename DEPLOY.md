@@ -277,7 +277,8 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 ```
 
-Then **Reload** in the Web tab.
+Then **Reload** in the Web tab. Run all four lines — skipping `migrate` is how
+you get a column that does not exist.
 
 ## The database
 

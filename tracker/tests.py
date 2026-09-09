@@ -910,3 +910,113 @@ class WinnerPriorityTests(Base):
         self.assertTrue(by_name["Worked"].on_track)
         self.assertFalse(by_name["Slipped"].on_track)
         self.assertEqual(by_name["Worked"].work_days, 4)
+
+
+@override_settings(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END)
+class NotSavedWarningTests(Base):
+    """A refused day must say so at the top, where people actually look."""
+
+    def setUp(self):
+        super().setUp()
+        self.me = self.join("Me", "me@example.com")
+        self.client.force_login(self.me.user)
+        self.url = reverse("day", args=[dt.date.today().isoformat()])
+
+    def answers(self, **overrides):
+        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
+                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data.update(overrides)
+        return data
+
+    def test_a_refused_day_warns_at_the_top_and_beside_the_field(self):
+        response = self.client.post(self.url, self.answers(youtube="W"))
+        body = response.content.decode()
+        self.assertEqual(DayLog.objects.count(), 0)
+        # the page-level message, above everything
+        self.assertContains(response, "Nothing was saved")
+        # the banner in the form header
+        self.assertContains(response, "Not saved yet")
+        # and still the specific message next to the reason box
+        self.assertIn("this is the evidence", body)
+        # the warning comes before the reason field, not only after it
+        self.assertLess(body.index("Nothing was saved"), body.index('name="reason"'))
+
+    def test_no_warning_when_the_day_saves(self):
+        response = self.client.post(
+            self.url, self.answers(youtube="W", reason="Lab tutorial"), follow=True
+        )
+        self.assertContains(response, "Saved.")
+        self.assertNotContains(response, "Nothing was saved")
+        self.assertNotContains(response, "Not saved yet")
+
+
+
+
+@override_settings(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END)
+class MyRecordTests(Base):
+    """Everyone can read their own whole log, the way an organiser reads others."""
+
+    def setUp(self):
+        super().setUp()
+        self.me = self.join("Me", "me@example.com", "CSE")
+        self.other = self.join("Other", "other@example.com", "ICT")
+        self.client.force_login(self.me.user)
+        self.log(self.me, LIVE_START, youtube="W", said_no=3)
+        DayLog.objects.filter(participant=self.me).update(
+            instead="Read 30 pages", reason="Lab tutorial"
+        )
+        self.log(self.me, LIVE_START + dt.timedelta(days=1), news="Y")
+
+    def test_my_record_shows_everything_i_wrote(self):
+        response = self.client.get(reverse("my_record"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "My record")
+        self.assertContains(response, "Read 30 pages")
+        self.assertContains(response, "Lab tutorial")
+        self.assertContains(response, "You stopped yourself")
+        self.assertTrue(response.context["is_me"])
+
+    def test_my_own_dates_link_back_to_the_day_so_i_can_change_them(self):
+        response = self.client.get(reverse("my_record"))
+        self.assertContains(response, reverse("day", args=[LIVE_START.isoformat()]))
+
+    def test_my_email_is_not_repeated_at_me(self):
+        self.assertNotContains(self.client.get(reverse("my_record")), "me@example.com")
+
+    def test_i_can_open_my_own_record_by_id_as_well(self):
+        response = self.client.get(reverse("person", args=[self.me.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["is_me"])
+
+    def test_but_still_not_anybody_elses(self):
+        self.assertEqual(
+            self.client.get(reverse("person", args=[self.other.pk])).status_code, 404
+        )
+
+    def test_an_organiser_reading_someone_else_gets_the_other_wording(self):
+        boss = self.join("Boss", "boss@example.com")
+        boss.can_see_everyone = True
+        boss.save()
+        self.client.force_login(boss.user)
+        response = self.client.get(reverse("person", args=[self.me.pk]))
+        self.assertFalse(response.context["is_me"])
+        self.assertContains(response, "because you help run the challenge")
+        self.assertContains(response, "me@example.com")
+
+    def test_the_link_is_in_the_navigation_for_everyone(self):
+        self.assertContains(self.client.get(reverse("today")), reverse("my_record"))
+
+
+class NoScreenshotFieldTests(Base):
+    """The upload is gone — the free tier has half a gigabyte for everything."""
+
+    def test_the_day_form_carries_no_file_input(self):
+        me = self.join("Me", "me@example.com")
+        self.client.force_login(me.user)
+        with self.settings(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END):
+            body = self.client.get(reverse("today")).content.decode()
+        self.assertNotIn('type="file"', body)
+        self.assertNotIn("multipart/form-data", body)
+
+    def test_the_model_has_no_evidence_field(self):
+        self.assertNotIn("evidence", [f.name for f in DayLog._meta.get_fields()])

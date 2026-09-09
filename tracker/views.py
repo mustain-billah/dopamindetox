@@ -111,10 +111,19 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
     was_saved = log.pk is not None
     form = DayLogForm(request.POST or None, instance=log)
 
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Saved.")
-        return redirect(reverse("day", args=[date.isoformat()]))
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Saved.")
+            return redirect(reverse("day", args=[date.isoformat()]))
+        # The error sits far down the page next to its field, and the page
+        # reloads at the top — without this, people think the day was saved.
+        messages.error(
+            request,
+            "Nothing was saved. " + " ".join(
+                str(e) for errors in form.errors.values() for e in errors
+            ),
+        )
 
     card = services.build_scorecard(participant)
     # Days of the challenge that have already happened, so the breakdown can
@@ -213,13 +222,23 @@ def board(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def person(request: HttpRequest, pk: int) -> HttpResponse:
-    """One person's whole log, day by day. Only for those allowed to read it."""
-    mine = get_participant(request)
-    if not can_see_everyone(mine, request.user):
-        raise Http404("No such page")
+def my_record(request: HttpRequest) -> HttpResponse:
+    """Everything you have written, on one page — the same view organisers get."""
+    return _record(request, get_participant(request))
 
+
+@login_required
+def person(request: HttpRequest, pk: int) -> HttpResponse:
+    """Somebody's whole log. Your own always; anyone else's only if allowed."""
+    mine = get_participant(request)
     them = get_object_or_404(Participant, pk=pk)
+    if them.pk != mine.pk and not can_see_everyone(mine, request.user):
+        raise Http404("No such page")
+    return _record(request, them)
+
+
+def _record(request: HttpRequest, them: Participant) -> HttpResponse:
+    mine = get_participant(request)
     card = services.build_scorecard(them)
     days = [
         log for log in them.logs.order_by("-date")
@@ -230,6 +249,7 @@ def person(request: HttpRequest, pk: int) -> HttpResponse:
         "tracker/person.html",
         {
             "them": them,
+            "is_me": them.pk == mine.pk,
             "card": card,
             "days": days,
             "grid": build_grid(card),

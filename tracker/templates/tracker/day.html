@@ -16,7 +16,13 @@
 <form method="post" class="card">
   {% csrf_token %}
   <h2>Did you use any of these on {{ date|date:"l, j F" }}?</h2>
-  {% if was_saved %}
+  {% if form.errors %}
+  <p class="fail">
+    <b>Not saved yet.</b>
+    {% for field in form %}{% for e in field.errors %}{{ e }} {% endfor %}{% endfor %}
+    {% for e in form.non_field_errors %}{{ e }} {% endfor %}
+  </p>
+  {% elif was_saved %}
   <p class="done">
     <b>Filled in already</b> — saved {{ log.updated_at|date:"j M" }} at {{ log.updated_at|time:"H:i" }},
     and counted as <b>{{ log.get_status_display_short }}</b>. Change anything below and press Update.
@@ -61,6 +67,7 @@
     {{ form.reason }}
     {% for e in form.reason.errors %}<span class="err">{{ e }}</span>{% endfor %}
   </div>
+
   {% for e in form.non_field_errors %}<p class="err" style="color:var(--yes)">{{ e }}</p>{% endfor %}
   {% for field in form %}{% if field.name != "reason" %}{% for e in field.errors %}
     <p class="err" style="color:var(--yes)">{{ field.label }}: {{ e }}</p>
@@ -135,6 +142,7 @@
   <p class="tiny muted" style="margin-top:12px">
     One square per day, in the same colours. Click any past square to fill that day in or change it.
     The ringed square is today; the pale ones are still ahead.
+    <a href="{% url 'my_record' %}">See everything you have written</a>.
   </p>
 </div>
 {% endblock %}

@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.today, name="today"),
     path("day/<str:day>/", views.day_view, name="day"),
     path("week/", views.weekly, name="weekly"),
+    path("record/", views.my_record, name="my_record"),
     path("board/", views.board, name="board"),
     path("board/<int:pk>/", views.person, name="person"),
     path("rules/", views.rules, name="rules"),

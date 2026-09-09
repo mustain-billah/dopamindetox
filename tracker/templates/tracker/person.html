@@ -1,21 +1,28 @@
 {% extends "tracker/base.html" %}
-{% block title %}{{ them.full_name }}{% endblock %}
+{% block title %}{% if is_me %}My record{% else %}{{ them.full_name }}{% endif %}{% endblock %}
 {% block content %}
 
 <div class="card">
   <div class="head">
     <div>
-      <h1>{{ them.full_name }}</h1>
+      <h1>{% if is_me %}My record{% else %}{{ them.full_name }}{% endif %}</h1>
       <p class="tiny muted">
-        {{ them.where }}{% if them.is_past_student %} · past student{% endif %}
-        {% if them.user %} · {{ them.user.email }}{% endif %}
+        {% if not is_me %}{{ them.full_name }} · {% endif %}{{ them.where }}{% if them.is_past_student %} · past student{% endif %}
+        {% if them.user and not is_me %} · {{ them.user.email }}{% endif %}
       </p>
     </div>
-    <a class="btn" href="{% url 'board' %}">Back to everyone</a>
+    <a class="btn" href="{% if is_me %}{% url 'today' %}{% else %}{% url 'board' %}{% endif %}">
+      {% if is_me %}Back to today{% else %}Back to everyone{% endif %}
+    </a>
   </div>
   <p class="tiny muted" style="margin-top:10px">
-    You are seeing this because you help run the challenge — everything below is in
-    {{ them.full_name }}'s own words. Nobody else can see it.
+    {% if is_me %}
+      Every day you have filled in, and everything you wrote. Click a date to change it.
+      Only you and the organisers can see this page.
+    {% else %}
+      You are seeing this because you help run the challenge — everything below is in
+      {{ them.full_name }}'s own words. Nobody else can see it.
+    {% endif %}
   </p>
 </div>
 
@@ -24,7 +31,7 @@
   <div class="tile"><span class="k">Nothing at all</span><span class="v">{{ card.clean_days }}</span><span class="u">days</span></div>
   <div class="tile"><span class="k">Study or work</span><span class="v">{{ card.work_days }}</span><span class="u">days</span></div>
   <div class="tile"><span class="k">Slipped</span><span class="v">{{ card.used_days }}</span><span class="u">days</span></div>
-  <div class="tile"><span class="k">Stopped themselves</span><span class="v">{{ card.said_no }}</span><span class="u">times</span></div>
+  <div class="tile"><span class="k">{% if is_me %}You stopped yourself{% else %}Stopped themselves{% endif %}</span><span class="v">{{ card.said_no }}</span><span class="u">times</span></div>
 </div>
 
 <div class="card">
@@ -51,14 +58,16 @@
       <thead>
         <tr>
           <th>Date</th><th>Answers</th><th class="n">Stopped</th>
-          <th>What they did instead</th><th>Reason they gave</th>
+          {% if is_me %}<th>What you did instead</th><th>Reason you gave</th>
+          {% else %}<th>What they did instead</th><th>Reason they gave</th>{% endif %}
         </tr>
       </thead>
       <tbody>
       {% for log in days %}
         <tr>
           <td class="nowrap">
-            {{ log.date|date:"j M" }}
+            {% if is_me %}<a href="{% url 'day' log.date|date:'Y-m-d' %}">{{ log.date|date:"j M" }}</a>
+            {% else %}{{ log.date|date:"j M" }}{% endif %}
             <span class="dept">{{ log.date|date:"D" }}</span>
           </td>
           <td>

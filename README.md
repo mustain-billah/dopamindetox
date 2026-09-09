@@ -19,8 +19,12 @@ anyone actually did, and the challenge says so out loud.
   yet. Pick your name, add an email and a password, done. Anyone not on the
   list can still add themselves.
 - **Today** — six questions, each answered **No**, **Study or work**, or
-  **Yes**. Plus how many times you stopped yourself, what you did instead,
-  and a reason if you used something.
+  **Yes**. Plus how many times you stopped yourself, what you did instead, and a
+  reason if you used something. A **study or work** answer will not save without
+  that reason — the group agreed those uses are fine "with evidence", and the
+  note is the evidence. A slip needs no reason: owning up should be the easy
+  path, not the one with a form error attached. A refused day says so at the top of
+  the page as well as beside the field, so nobody walks away thinking it saved.
 - **Before it starts, and after it ends**, the daily page is a countdown or a
   closing note instead of a form. Days outside the window cannot be filled in.
 - **Coming back to a day you have done** says so plainly, shows what it counted
@@ -36,6 +40,8 @@ anyone actually did, and the challenge says so out loud.
   using YouTube for a class is allowed, but someone with no such days is ahead
   of someone who has them.
 - **This week** — two lines a week, so four months leave a record.
+- **My record** — one page with every day you have filled in and everything you
+  wrote, the same view the organisers get of you. Click a date to change it.
 - **Missed a day?** The page lists every gap as a tappable date, and every past
   square in the grid links to that day, so filling one in is one tap rather than
   clicking "Previous day" over and over. There is no deadline on backfilling —

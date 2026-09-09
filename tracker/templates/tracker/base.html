@@ -101,6 +101,9 @@ input[type=number]{max-width:110px;font-family:var(--mono)}
 .testbar{background:var(--work-soft);color:var(--work);border-bottom:1px solid var(--work);
   padding:10px 18px;font-size:14px;line-height:1.5;text-align:center}
 .testbar b{font-weight:700}
+.fail{margin:10px 0 12px;padding:10px 14px;border-radius:9px;font-size:14px;
+  border:1px solid var(--yes);color:var(--yes);background:var(--yes-soft)}
+.fail b{font-weight:700}
 .done,.todo{margin:10px 0 12px;padding:10px 14px;border-radius:9px;font-size:14px;border:1px solid}
 .done{border-color:var(--no);color:var(--no);background:var(--no-soft)}
 .todo{border-color:var(--work);color:var(--work);background:var(--work-soft)}
@@ -191,6 +194,7 @@ ul.plain li b{color:var(--ink);font-weight:600}
     <span class="brand">🌱 {{ challenge_name }}</span>
     {% if user.is_authenticated %}
       <a href="{% url 'today' %}">Today</a>
+      <a href="{% url 'my_record' %}">My record</a>
       <a href="{% url 'board' %}">Everyone</a>
       <a href="{% url 'weekly' %}">This week</a>
       <a href="{% url 'rules' %}">Rules</a>
