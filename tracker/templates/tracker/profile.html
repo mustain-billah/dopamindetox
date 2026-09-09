@@ -1,0 +1,13 @@
+{% extends "tracker/base.html" %}
+{% block title %}My details{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>My details</h1>
+  <p class="tiny muted" style="margin:6px 0 20px">Email: {{ user.email }}</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "tracker/_form.html" %}
+    <button class="btn go" type="submit">Save</button>
+  </form>
+</div>
+{% endblock %}

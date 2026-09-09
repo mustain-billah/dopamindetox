@@ -1,0 +1,63 @@
+{% extends "tracker/base.html" %}
+{% block title %}Everyone{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="head">
+    <div>
+      <h1>Everyone</h1>
+      <p class="tiny muted">Whoever stays away for the whole four months wins. You can see everyone's totals, but only they can change their own.</p>
+    </div>
+    <span class="label">{{ currency }}{{ prize }} prize</span>
+  </div>
+  {% include "tracker/_progress.html" %}
+</div>
+
+<div class="tiles">
+  <div class="tile"><span class="k">Taking part</span><span class="v">{{ totals.people }}</span><span class="u">people</span></div>
+  <div class="tile"><span class="k">Still in</span><span class="v">{{ totals.on_track }}</span><span class="u">never broke it</span></div>
+  <div class="tile"><span class="k">Clean days</span><span class="v">{{ totals.clean_days }}</span><span class="u">between everyone</span></div>
+  <div class="tile"><span class="k">Times said no</span><span class="v">{{ totals.said_no }}</span><span class="u">between everyone</span></div>
+</div>
+
+<div class="card">
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:26px"></th><th>Name</th><th>Status</th>
+          <th class="n">Streak</th><th class="n">Clean</th>
+          <th class="n">Study/work</th><th class="n">Used it</th><th class="n">Said no</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for c in cards %}
+        <tr {% if c.participant.pk == mine.pk %}class="me"{% endif %}>
+          <td class="n muted">{{ forloop.counter }}</td>
+          <td>
+            <div class="who">
+              <span>{{ c.participant.full_name }}</span>
+              <span class="dept">{{ c.participant.dept }}{% if c.participant.is_past_student %} · past student{% endif %}</span>
+            </div>
+          </td>
+          <td>
+            {% if c.logged_days == 0 %}<span class="tag">Not started</span>
+            {% elif c.on_track %}<span class="tag ok">Still in</span>
+            {% else %}<span class="tag out">Broke it</span>{% endif %}
+          </td>
+          <td class="n">{{ c.streak }}</td>
+          <td class="n">{{ c.clean_days }}</td>
+          <td class="n">{{ c.work_days }}</td>
+          <td class="n">{{ c.used_days }}</td>
+          <td class="n">{{ c.said_no }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="muted">Nobody has joined yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="tiny muted" style="margin-top:14px">
+    Ordered by fewest days used, then fewest study-or-work days, then most days filled in.
+  </p>
+</div>
+{% endblock %}

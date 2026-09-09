@@ -1,0 +1,16 @@
+{% extends "tracker/base.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Log in</h1>
+  <p class="tiny muted" style="margin:6px 0 20px">Use the email you signed up with.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="field"><label for="{{ form.username.id_for_label }}">Email</label>{{ form.username }}</div>
+    <div class="field"><label for="{{ form.password.id_for_label }}">Password</label>{{ form.password }}</div>
+    {% for e in form.non_field_errors %}<p class="err" style="color:var(--yes)">{{ e }}</p>{% endfor %}
+    <button class="btn go" type="submit" style="width:100%">Log in</button>
+  </form>
+  <p class="tiny muted" style="margin-top:16px">No account yet? <a href="{% url 'signup' %}">Join the challenge</a></p>
+</div>
+{% endblock %}

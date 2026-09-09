@@ -1,0 +1,53 @@
+{% extends "tracker/base.html" %}
+{% block title %}Rules{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="head">
+    <div>
+      <h1>{{ challenge_name }}</h1>
+      <p class="tiny muted">{{ start|date:"j F Y" }} to {{ end|date:"j F Y" }} — {{ total_days }} days. {{ currency }}{{ prize }} to the winner.</p>
+    </div>
+  </div>
+  {% include "tracker/_progress.html" %}
+</div>
+
+<div class="card">
+  <h2>Stay away from</h2>
+  <ul class="plain" style="margin-top:10px">
+    <li><b>YouTube, Facebook, Instagram, X, LinkedIn</b></li>
+    <li><b>Newspapers</b> — online and print, sports pages included</li>
+    <li><b>Videos, films, reels and games</b> — on any device</li>
+    <li><b>Any other social platform</b></li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>You can still</h2>
+  <ul class="plain" style="margin-top:10px">
+    <li>Use <b>WhatsApp</b> for urgent messages.</li>
+    <li>Open <b>YouTube or LinkedIn for study or a job</b> — say why when you fill in the day. It counts as <b>study or work</b>, not as a clean day.</li>
+    <li>Get class notices in person or some other way.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Who wins</h2>
+  <ul class="plain" style="margin-top:10px">
+    <li>Whoever <b>stays away for the whole time</b> wins {{ currency }}{{ prize }}.</li>
+    <li>Using something for study or work does not break the rule, but someone with no such days is ahead of someone who has them.</li>
+    <li>You can take part even if you have no Android phone or laptop.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Who checks</h2>
+  <p class="muted">Nobody. There is no way to see what anyone actually did — it rests on each person's own honesty. This page does not watch anyone. Everything on it was typed in by the person it belongs to, and only that person can change it.</p>
+</div>
+
+{% if not user.is_authenticated %}
+<div class="card" style="text-align:center">
+  <p style="margin-bottom:14px">Ready to take part?</p>
+  <a class="btn go" href="{% url 'signup' %}">Join the challenge</a>
+</div>
+{% endif %}
+{% endblock %}

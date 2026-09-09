@@ -1,0 +1,86 @@
+{% extends "tracker/base.html" %}
+{% block title %}Today{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="head">
+    <div>
+      <h1>{% if is_today %}Today{% else %}{{ date|date:"j F Y" }}{% endif %}</h1>
+      <p class="tiny muted">{{ participant.full_name }}{% if participant.dept %} · {{ participant.dept }}{% endif %}</p>
+    </div>
+    <span class="label">Day {{ day_no }} of {{ total_days }}</span>
+  </div>
+  {% include "tracker/_progress.html" %}
+</div>
+
+<form method="post" class="card">
+  {% csrf_token %}
+  <h2>Did you use any of these on {{ date|date:"l, j F" }}?</h2>
+  <p class="tiny muted" style="margin:6px 0 14px">
+    Answer honestly — nobody checks, and nobody can change your answers but you.
+    {% if not was_saved %}<b style="color:var(--work)">This day is not counted yet. Press Save at the bottom.</b>{% endif %}
+  </p>
+
+  {% for row in log.rows %}
+  <div class="q">
+    <div>
+      <div class="name">{{ row.label }}</div>
+      <div class="help">{{ row.help }}</div>
+    </div>
+    <div class="pick" role="radiogroup" aria-label="{{ row.label }}">
+      <input type="radio" class="N" name="{{ row.key }}" value="N" id="{{ row.key }}_N" {% if row.value == "N" %}checked{% endif %}><label for="{{ row.key }}_N">No</label>
+      <input type="radio" class="W" name="{{ row.key }}" value="W" id="{{ row.key }}_W" {% if row.value == "W" %}checked{% endif %}><label for="{{ row.key }}_W">Study or work</label>
+      <input type="radio" class="Y" name="{{ row.key }}" value="Y" id="{{ row.key }}_Y" {% if row.value == "Y" %}checked{% endif %}><label for="{{ row.key }}_Y">Yes</label>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="q">
+    <div>
+      <div class="name">Times you said no</div>
+      <div class="help">How often you reached for something and stopped yourself.</div>
+    </div>
+    <div>{{ form.said_no }}</div>
+  </div>
+
+  <div class="field" style="margin-top:18px">
+    <label for="{{ form.instead.id_for_label }}">What you did instead</label>
+    {{ form.instead }}
+  </div>
+  <div class="field">
+    <label for="{{ form.reason.id_for_label }}">Reason, if you answered yes or study/work</label>
+    {{ form.reason }}
+  </div>
+  {% if form.errors %}<p class="err" style="color:var(--yes)">{{ form.errors }}</p>{% endif %}
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <button class="btn go" type="submit">Save</button>
+    <a class="btn" href="{% url 'day' prev_day|date:'Y-m-d' %}">Previous day</a>
+    {% if next_day %}<a class="btn" href="{% url 'day' next_day|date:'Y-m-d' %}">Next day</a>{% endif %}
+    {% if not is_today %}<a class="btn" href="{% url 'today' %}">Back to today</a>{% endif %}
+  </div>
+</form>
+
+<div class="tiles">
+  <div class="tile"><span class="k">Streak</span><span class="v">{{ card.streak }}</span><span class="u">days in a row</span></div>
+  <div class="tile"><span class="k">Clean days</span><span class="v">{{ card.clean_days }}</span><span class="u">nothing at all</span></div>
+  <div class="tile"><span class="k">Study or work</span><span class="v">{{ card.work_days }}</span><span class="u">days</span></div>
+  <div class="tile"><span class="k">Days you used it</span><span class="v">{{ card.used_days }}</span><span class="u">days</span></div>
+  <div class="tile"><span class="k">Times you said no</span><span class="v">{{ card.said_no }}</span><span class="u">so far</span></div>
+</div>
+
+<div class="card">
+  <h2>All {{ total_days }} days</h2>
+  <div class="gridwrap" style="margin-top:14px">
+    <div class="cal">
+      {% for c in grid %}<span class="{{ c.status }}{% if c.future %} future{% endif %}{% if c.is_today %} now{% endif %}" title="{{ c.date|date:'j M' }}"></span>{% endfor %}
+    </div>
+  </div>
+  <div class="key">
+    <span><i style="background:var(--no)"></i>Clean</span>
+    <span><i style="background:var(--work)"></i>Study or work</span>
+    <span><i style="background:var(--yes)"></i>Used it</span>
+    <span><i style="background:var(--blank)"></i>Not filled in</span>
+  </div>
+</div>
+{% endblock %}

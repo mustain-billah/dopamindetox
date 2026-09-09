@@ -1,0 +1,26 @@
+{% extends "tracker/base.html" %}
+{% block title %}This week{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="head"><h1>Week {{ week }}</h1><span class="label">Weekly note</span></div>
+  <p class="tiny muted">Two lines a week. In four months you will be glad you wrote them.</p>
+</div>
+<form method="post" class="card">
+  {% csrf_token %}
+  {% include "tracker/_form.html" %}
+  <button class="btn go" type="submit">Save note</button>
+</form>
+{% if notes %}
+<div class="card">
+  <h2>Earlier weeks</h2>
+  <div class="tablewrap" style="margin-top:12px">
+    <table>
+      <thead><tr><th class="n">Week</th><th>Hardest</th><th>Got easier</th></tr></thead>
+      <tbody>
+      {% for n in notes %}<tr><td class="n">{{ n.week }}</td><td class="muted">{{ n.hardest|default:"—" }}</td><td class="muted">{{ n.easier|default:"—" }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "tracker/base.html" %}
+{% block title %}Join{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Join the challenge</h1>
+  <p class="tiny muted" style="margin:6px 0 20px">Sign up with your email. You will log in with it later, and only you can fill in your own days.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "tracker/_form.html" %}
+    <button class="btn go" type="submit" style="width:100%">Create my account</button>
+  </form>
+  <p class="tiny muted" style="margin-top:16px">Already signed up? <a href="{% url 'login' %}">Log in</a></p>
+</div>
+{% endblock %}
