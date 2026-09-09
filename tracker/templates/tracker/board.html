@@ -23,7 +23,7 @@
     <table>
       <thead>
         <tr>
-          <th style="width:26px"></th><th>Name</th><th>Status</th>
+          <th class="rank" style="width:26px"></th><th>Name</th><th>Status</th>
           <th class="n">In a row</th><th class="n">Nothing</th>
           <th class="n">Work only</th><th class="n">Slipped</th>{% if can_see_all %}<th></th>{% endif %}
         </tr>
@@ -31,11 +31,11 @@
       <tbody>
       {% for c in cards %}
         <tr {% if c.participant.pk == mine.pk %}class="me"{% endif %}>
-          <td class="n muted">{{ forloop.counter }}</td>
+          <td class="n muted rank">{{ forloop.counter }}</td>
           <td>
             <div class="who">
               <span>{{ c.participant.full_name }}</span>
-              <span class="dept">{{ c.participant.where }}{% if c.participant.is_past_student %} · past student{% endif %}</span>
+              <span class="dept">{{ c.participant.where }}{% if c.participant.is_past_student %}<span class="alum"> · past student</span>{% endif %}</span>
             </div>
           </td>
           <td>

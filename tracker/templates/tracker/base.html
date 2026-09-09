@@ -52,6 +52,7 @@ a{color:var(--no)}
 
 nav.top{background:var(--surface);border-bottom:1px solid var(--line)}
 nav.top .in{max-width:920px;margin:0 auto;padding:11px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+nav.top .links{display:flex;gap:18px;align-items:center}
 nav.top .brand{font-family:var(--display);font-weight:600;letter-spacing:-.015em;font-size:17px}
 nav.top a{text-decoration:none;color:var(--ink-2);font-size:15px}
 nav.top a:hover{color:var(--ink)}
@@ -123,8 +124,9 @@ input[type=number]{max-width:110px;font-family:var(--mono)}
 .pick input.W:checked + label{background:var(--work-soft);color:var(--work)}
 .pick input.Y:checked + label{background:var(--yes-soft);color:var(--yes)}
 
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;background:var(--line);
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;background:var(--surface);
   border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tile{outline:1px solid var(--line)}
 .tile{background:var(--surface);padding:14px 15px;display:flex;flex-direction:column;gap:1px}
 .tile .k{font-size:12.5px;color:var(--ink-3)}
 .tile .v{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
@@ -184,7 +186,52 @@ ul.plain{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
 ul.plain li{color:var(--ink-2)}
 ul.plain li b{color:var(--ink);font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-@media (max-width:600px){.q{grid-template-columns:1fr}.pick label{padding:8px 12px;font-size:13.5px}}
+
+/* ---------- phones ---------- */
+@media (max-width:640px){
+  main{padding:16px 12px 56px;gap:16px}
+  .card{padding:16px 14px;border-radius:11px}
+  h1{font-size:26px}
+
+  /* Two tidy rows instead of three ragged ones. */
+  nav.top .in{padding:9px 12px;gap:8px 12px}
+  nav.top .brand{font-size:16px}
+  nav.top .right{gap:10px}
+  nav.top .right .tiny{display:none}          /* you know your own name */
+  nav.top .links{order:3;width:100%;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    border-top:1px solid var(--line);padding-top:7px;margin-top:2px}
+  nav.top .links a{padding:5px 12px;white-space:nowrap;font-size:14.5px}
+  nav.top .links a:first-child{padding-left:0}
+
+  /* Start and end dates live on the rules page; here the middle is what matters. */
+  .pmeta span:first-child,.pmeta span:last-child{display:none}
+  .pmeta{justify-content:center}
+
+  /* One question per row, the three answers filling the width as real targets. */
+  .q{grid-template-columns:1fr;gap:10px}
+  .pick{width:100%}
+  .pick label{flex:1;text-align:center;padding:12px 6px;font-size:14px}
+
+  /* 16px stops iOS zooming the page when a field is focused. */
+  input[type=text],input[type=email],input[type=password],input[type=number],select{font-size:16px}
+  .btn{padding:11px 16px}
+  .btn.go{width:100%;text-align:center}
+
+  /* Let a wide table scroll sideways rather than stack its headings into
+     towers. The rank number goes: the order already says it. */
+  th,td{padding:9px 8px;font-size:14px;white-space:nowrap}
+  th{font-size:11px;letter-spacing:.03em}
+  /* Names stay on one line too — the table scrolls, so a wrapped name only
+     makes every row three times as tall for nothing. */
+  td.wrap{white-space:normal;min-width:16ch}
+  .who .alum{display:none}
+  .rank,th.rank{display:none}
+  .tablewrap{margin:0 -14px;padding:0 14px}
+  .tile .v{font-size:23px}
+  .chip{padding:7px 13px}
+  .cal span,.cal a{width:12px;height:12px}
+  .cal{grid-template-rows:repeat(7,12px)}
+}
 </style>
 {% block head %}{% endblock %}
 </head>
@@ -193,11 +240,13 @@ ul.plain li b{color:var(--ink);font-weight:600}
   <div class="in">
     <span class="brand">🌱 {{ challenge_name }}</span>
     {% if user.is_authenticated %}
-      <a href="{% url 'today' %}">Today</a>
-      <a href="{% url 'my_record' %}">My record</a>
-      <a href="{% url 'board' %}">Everyone</a>
-      <a href="{% url 'weekly' %}">This week</a>
-      <a href="{% url 'rules' %}">Rules</a>
+      <span class="links">
+        <a href="{% url 'today' %}">Today</a>
+        <a href="{% url 'my_record' %}">My record</a>
+        <a href="{% url 'board' %}">Everyone</a>
+        <a href="{% url 'weekly' %}">This week</a>
+        <a href="{% url 'rules' %}">Rules</a>
+      </span>
       <span class="right">
         <a href="{% url 'profile' %}" class="tiny">{{ user.participant.full_name|default:user.email }}</a>
         <form method="post" action="{% url 'logout' %}">{% csrf_token %}

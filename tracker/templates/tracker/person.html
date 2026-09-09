@@ -78,8 +78,8 @@
             </div>
           </td>
           <td class="n">{{ log.said_no }}</td>
-          <td class="muted">{{ log.instead|default:"—" }}</td>
-          <td class="muted">{{ log.reason|default:"—" }}</td>
+          <td class="muted wrap">{{ log.instead|default:"—" }}</td>
+          <td class="muted wrap">{{ log.reason|default:"—" }}</td>
         </tr>
       {% empty %}
         <tr><td colspan="5" class="muted">Nothing filled in yet.</td></tr>
