@@ -147,6 +147,10 @@ CHALLENGE_NAME = os.environ.get("CHALLENGE_NAME", "Dopamine Detox")
 CHALLENGE_START = env_date("CHALLENGE_START", dt.date(2026, 9, 11))
 CHALLENGE_END = env_date("CHALLENGE_END", dt.date(2027, 1, 11))
 CHALLENGE_PRIZE = os.environ.get("CHALLENGE_PRIZE", "10,000")
+# A trial run before the real thing: everything works for real, and a banner on
+# every page says the data will be wiped. Turn off before the real start date.
+CHALLENGE_TEST_MODE = env_bool("CHALLENGE_TEST_MODE", False)
+CHALLENGE_REAL_START = env_date("CHALLENGE_REAL_START", dt.date(2026, 9, 11))
 CHALLENGE_CURRENCY = os.environ.get("CHALLENGE_CURRENCY", "৳")
 
 # ---------------------------------------------------------------------------

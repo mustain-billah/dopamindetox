@@ -8,7 +8,7 @@
       <h1>{% if is_today %}Today{% else %}{{ date|date:"j F Y" }}{% endif %}</h1>
       <p class="tiny muted">{{ participant.full_name }}{% if participant.dept %} · {{ participant.dept }}{% endif %}</p>
     </div>
-    <span class="label">{% if phase == "before" %}Practice · starts {{ start|date:"j M" }}{% else %}Day {{ day_no }} of {{ total_days }}{% endif %}</span>
+    <span class="label">Day {{ day_no }} of {{ total_days }}</span>
   </div>
   {% include "tracker/_progress.html" %}
 </div>
@@ -16,14 +16,7 @@
 <form method="post" class="card">
   {% csrf_token %}
   <h2>Did you use any of these on {{ date|date:"l, j F" }}?</h2>
-  {% if is_practice %}
-  <p class="practice">
-    <b>Practice — nothing here counts.</b>
-    The challenge starts on {{ start|date:"j F Y" }}. Try the form out and say what
-    should change; everything entered now is wiped before the real thing begins.
-    {% if was_saved %}Your practice answers were saved at {{ log.updated_at|time:"H:i" }}.{% endif %}
-  </p>
-  {% elif was_saved %}
+  {% if was_saved %}
   <p class="done">
     <b>Filled in already</b> — saved {{ log.updated_at|date:"j M" }} at {{ log.updated_at|time:"H:i" }},
     and counted as <b>{{ log.get_status_display_short }}</b>. Change anything below and press Update.
@@ -93,10 +86,7 @@
     <h2>Your {{ elapsed }} day{{ elapsed|pluralize }} so far</h2>
     <span class="label">{{ total_days }} in the whole challenge</span>
   </div>
-  <p class="tiny muted">
-    {% if phase == "before" %}Nothing counts until {{ start|date:"j F" }}, so these are all zero for now.
-    {% else %}Every day you fill in is one of these three.{% endif %}
-  </p>
+  <p class="tiny muted">Every day you fill in is one of these three.</p>
 
   <div class="breakdown">
     <div class="brow">

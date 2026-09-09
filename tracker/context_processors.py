@@ -26,6 +26,8 @@ def challenge(request):
         "phase": phase,
         "days_left": max(0, (end - today).days),
         "days_to_start": max(0, (start - today).days),
+        "test_mode": settings.CHALLENGE_TEST_MODE,
+        "real_start": settings.CHALLENGE_REAL_START,
         "prize": settings.CHALLENGE_PRIZE,
         "currency": settings.CHALLENGE_CURRENCY,
     }

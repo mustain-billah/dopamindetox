@@ -1,14 +1,25 @@
 {% extends "tracker/base.html" %}
-{% block title %}Finished{% endblock %}
+{% block title %}{% if phase == "before" %}Not started yet{% else %}Finished{% endif %}{% endblock %}
 {% block content %}
 
 <div class="card" style="text-align:center;padding:34px 22px">
-  <p class="label">Finished {{ end|date:"j F Y" }}</p>
-  <h1 style="margin:8px 0 6px">That's the four months</h1>
-  <p class="muted" style="max-width:44ch;margin:0 auto">
-    The challenge is over. Your days are all still here, and the board shows how
-    everyone did.
-  </p>
+  {% if phase == "before" %}
+    <p class="label">Starts {{ start|date:"j F Y" }}</p>
+    <h1 style="margin:8px 0 6px">
+      {% if days_to_start == 1 %}One day to go{% else %}{{ days_to_start }} days to go{% endif %}
+    </h1>
+    <p class="muted" style="max-width:44ch;margin:0 auto">
+      Nothing to fill in yet. Come back on {{ start|date:"l, j F" }} and this page
+      becomes your daily check-in.
+    </p>
+  {% else %}
+    <p class="label">Finished {{ end|date:"j F Y" }}</p>
+    <h1 style="margin:8px 0 6px">That's the four months</h1>
+    <p class="muted" style="max-width:44ch;margin:0 auto">
+      The challenge is over. Your days are all still here, and the board shows how
+      everyone did.
+    </p>
+  {% endif %}
 
   <div style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
     <a class="btn go" href="{% url 'board' %}">See everyone</a>

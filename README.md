@@ -21,11 +21,8 @@ anyone actually did, and the challenge says so out loud.
 - **Today** — six questions, each answered **No**, **Study or work**, or
   **Yes**. Plus how many times you stopped yourself, what you did instead,
   and a reason if you used something.
-- **Before it starts** the form is there and works, clearly marked as practice,
-  so the group can try the app and suggest changes. Practice answers are saved
-  but never scored and never drawn on the 123-day grid — testing cannot inflate
-  anyone's totals. `python manage.py clear_practice --yes` wipes them before the
-  real start. After 11 January the form closes with a summary page.
+- **Before it starts, and after it ends**, the daily page is a countdown or a
+  closing note instead of a form. Days outside the window cannot be filled in.
 - **Coming back to a day you have done** says so plainly, shows what it counted
   as, and the button reads Update rather than Save.
 - **A day only counts once you press Save.** Opening the page changes nothing —
@@ -61,19 +58,24 @@ Open <http://127.0.0.1:8000/rules/>, then sign up at `/signup/`.
 See **[DEPLOY.md](DEPLOY.md)** — a numbered walkthrough for the free
 PythonAnywhere account, with the free-tier limits and a troubleshooting table.
 
-## Practice before the start
+## Trial run
 
-Anything logged before `CHALLENGE_START` is practice: kept in the database so
-people can see their own test entries, but skipped by every scoring function, so
-it never reaches a total, a streak or the board. The window is 30 days wide;
-dates before that are refused outright.
+To let the group use the real app before the real start, point
+`CHALLENGE_START` at a date already past and set `CHALLENGE_TEST_MODE=true`.
+Everything then behaves exactly as it will for real — streaks, the board, the
+grid — and a banner on every page says the data will be deleted, naming the
+real start date from `CHALLENGE_REAL_START`.
 
-Clear it before the challenge begins:
+When the trial is done, put the real dates back, turn the flag off, and wipe
+the answers:
 
 ```bash
-python manage.py clear_practice          # says how many, deletes nothing
-python manage.py clear_practice --yes    # deletes them
+python manage.py reset_challenge          # says what would go, deletes nothing
+python manage.py reset_challenge --yes    # deletes every day log and weekly note
 ```
+
+Accounts and the roster survive, so nobody signs up twice. `--accounts` also
+unclaims every place, which is rarely what you want.
 
 ## The roster
 

@@ -213,20 +213,40 @@ If somebody is missing from the list, add them to `tracker/roster.py`, push,
 
 ---
 
-## Before the real start
+## Running a trial before 11 September
 
-Let people try the app in the days before 11 September — the form works and is
-marked as practice, and nothing they enter is scored. On 10 September, clear it
-out in a Bash console:
+Let the group use the real app first, so they can see real streaks and a real
+board and tell you what to change. Edit `~/dopamindetox/.env` to:
+
+```
+CHALLENGE_START=2026-08-30
+CHALLENGE_END=2026-12-30
+CHALLENGE_TEST_MODE=true
+CHALLENGE_REAL_START=2026-09-11
+```
+
+Reload in the Web tab. Every page now carries a banner saying it is a trial and
+the data will be deleted on 11 September. Everything else is genuinely live.
+
+**On 10 September**, put the real dates back:
+
+```
+CHALLENGE_START=2026-09-11
+CHALLENGE_END=2027-01-11
+CHALLENGE_TEST_MODE=false
+```
+
+then wipe the trial answers in a Bash console:
 
 ```bash
 cd ~/dopamindetox
 workon detox-venv
-python manage.py clear_practice          # shows the count, deletes nothing
-python manage.py clear_practice --yes    # deletes them
+python manage.py reset_challenge          # shows what would go
+python manage.py reset_challenge --yes    # does it
 ```
 
-Then **Reload** in the Web tab. Everyone starts the 11th on zero.
+Reload again. Accounts and the roster survive — nobody signs up twice — and
+everyone starts the 11th on zero.
 
 ---
 
