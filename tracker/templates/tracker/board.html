@@ -25,7 +25,7 @@
         <tr>
           <th style="width:26px"></th><th>Name</th><th>Status</th>
           <th class="n">In a row</th><th class="n">Nothing</th>
-          <th class="n">Work only</th><th class="n">Slipped</th>
+          <th class="n">Work only</th><th class="n">Slipped</th>{% if organiser %}<th></th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -52,9 +52,10 @@
           {% else %}
           <td class="n muted" colspan="4">has not signed in yet</td>
           {% endif %}
+          {% if organiser %}<td class="n">{% if c.has_joined %}<a class="tiny" href="{% url 'person' c.participant.pk %}">Open</a>{% endif %}</td>{% endif %}
         </tr>
       {% empty %}
-        <tr><td colspan="7" class="muted">Nobody is on the list yet.</td></tr>
+        <tr><td colspan="8" class="muted">Nobody is on the list yet.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -64,7 +65,10 @@
       <b>Nothing</b> — days with no use at all.
       <b>Work only</b> — days used just for study or a job.
       <b>Slipped</b> — days something was used.</span>
-    <span>Ordered by fewest slips, then fewest work-only days, then most days filled in.</span>
+    <span>Ordered by fewest slips, then fewest work-only days, then most days filled in.
+      Organisers are not on this board.</span>
+    {% if organiser %}<span><b>You are an organiser</b> — Open shows one person's full log,
+      including what they wrote. Nobody else can see that.</span>{% endif %}
   </div>
 </div>
 {% endblock %}

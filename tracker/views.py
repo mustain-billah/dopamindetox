@@ -8,18 +8,20 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from . import services
 from .forms import DayLogForm, ProfileForm, SignUpForm, WeeklyNoteForm
 from .models import (
+    CATEGORIES,
     DayLog,
     Mark,
     Participant,
     WeeklyNote,
     challenge_end,
     challenge_start,
+    counts_toward_challenge,
     total_days,
 )
 
@@ -30,8 +32,14 @@ def get_participant(request: HttpRequest) -> Participant:
         participant = Participant.objects.create(
             user=request.user,
             full_name=request.user.get_full_name() or request.user.username,
+            # A Django staff account is running the thing, not competing in it.
+            is_organiser=request.user.is_staff,
         )
     return participant
+
+
+def is_organiser(participant: Participant, user) -> bool:
+    return participant.is_organiser or user.is_staff
 
 
 def signup(request: HttpRequest) -> HttpResponse:
@@ -179,11 +187,43 @@ def weekly(request: HttpRequest) -> HttpResponse:
 @login_required
 def board(request: HttpRequest) -> HttpResponse:
     """Everyone's totals. Read-only — there is nothing here that writes."""
+    mine = get_participant(request)
     cards = services.leaderboard()
     return render(
         request,
         "tracker/board.html",
-        {"cards": cards, "totals": services.group_totals(cards), "mine": get_participant(request)},
+        {
+            "cards": cards,
+            "totals": services.group_totals(cards),
+            "mine": mine,
+            "organiser": is_organiser(mine, request.user),
+        },
+    )
+
+
+@login_required
+def person(request: HttpRequest, pk: int) -> HttpResponse:
+    """One person's whole log, day by day. Organisers only."""
+    mine = get_participant(request)
+    if not is_organiser(mine, request.user):
+        raise Http404("No such page")
+
+    them = get_object_or_404(Participant, pk=pk)
+    card = services.build_scorecard(them)
+    days = [
+        log for log in them.logs.order_by("-date")
+        if counts_toward_challenge(log.date)
+    ]
+    return render(
+        request,
+        "tracker/person.html",
+        {
+            "them": them,
+            "card": card,
+            "days": days,
+            "grid": build_grid(card),
+            "categories": CATEGORIES,
+        },
     )
 
 

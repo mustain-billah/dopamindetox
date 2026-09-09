@@ -1,0 +1,103 @@
+{% extends "tracker/base.html" %}
+{% block title %}{{ them.full_name }}{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="head">
+    <div>
+      <h1>{{ them.full_name }}</h1>
+      <p class="tiny muted">
+        {{ them.where }}{% if them.is_past_student %} · past student{% endif %}
+        {% if them.user %} · {{ them.user.email }}{% endif %}
+      </p>
+    </div>
+    <a class="btn" href="{% url 'board' %}">Back to everyone</a>
+  </div>
+  <p class="tiny muted" style="margin-top:10px">
+    You are seeing this because you are an organiser — everything below is in
+    {{ them.full_name }}'s own words. Nobody else can see it.
+  </p>
+</div>
+
+<div class="tiles">
+  <div class="tile"><span class="k">Days in a row</span><span class="v">{{ card.streak }}</span><span class="u">without slipping</span></div>
+  <div class="tile"><span class="k">Nothing at all</span><span class="v">{{ card.clean_days }}</span><span class="u">days</span></div>
+  <div class="tile"><span class="k">Study or work</span><span class="v">{{ card.work_days }}</span><span class="u">days</span></div>
+  <div class="tile"><span class="k">Slipped</span><span class="v">{{ card.used_days }}</span><span class="u">days</span></div>
+  <div class="tile"><span class="k">Stopped themselves</span><span class="v">{{ card.said_no }}</span><span class="u">times</span></div>
+</div>
+
+<div class="card">
+  <div class="gridwrap">
+    <div class="cal">
+      {% for c in grid %}<span class="{{ c.status }}{% if c.future %} future{% endif %}{% if c.is_today %} now{% endif %}" title="{{ c.date|date:'j M' }}"></span>{% endfor %}
+    </div>
+  </div>
+  <div class="key">
+    <span><i style="background:var(--no)"></i>Nothing at all</span>
+    <span><i style="background:var(--work)"></i>Study or work</span>
+    <span><i style="background:var(--yes)"></i>Slipped</span>
+    <span><i style="background:var(--blank)"></i>Not filled in</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="head">
+    <h2>Day by day</h2>
+    <span class="label">{{ days|length }} filled in</span>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th><th>Answers</th><th class="n">Stopped</th>
+          <th>What they did instead</th><th>Reason they gave</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for log in days %}
+        <tr>
+          <td class="nowrap">
+            {{ log.date|date:"j M" }}
+            <span class="dept">{{ log.date|date:"D" }}</span>
+          </td>
+          <td>
+            <div class="marks">
+              {% for row in log.rows %}
+                <i class="{{ row.value }}" title="{{ row.label }} — {% if row.value == 'N' %}no{% elif row.value == 'W' %}study or work{% else %}yes{% endif %}"></i>
+              {% endfor %}
+            </div>
+          </td>
+          <td class="n">{{ log.said_no }}</td>
+          <td class="muted">{{ log.instead|default:"—" }}</td>
+          <td class="muted">{{ log.reason|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="muted">Nothing filled in yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="tiny muted" style="margin-top:14px">
+    Six marks per day, left to right:
+    {% for key, label, help in categories %}{{ label }}{% if not forloop.last %} · {% endif %}{% endfor %}.
+    Hover a mark to see which one it is.
+  </p>
+</div>
+
+{% if them.notes.exists %}
+<div class="card">
+  <h2>Weekly notes</h2>
+  <div class="tablewrap" style="margin-top:12px">
+    <table>
+      <thead><tr><th class="n">Week</th><th>Hardest</th><th>Got easier</th></tr></thead>
+      <tbody>
+      {% for n in them.notes.all %}
+        <tr><td class="n">{{ n.week }}</td><td class="muted">{{ n.hardest|default:"—" }}</td><td class="muted">{{ n.easier|default:"—" }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

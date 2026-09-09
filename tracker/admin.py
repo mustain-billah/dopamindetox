@@ -5,7 +5,8 @@ from .models import DayLog, Participant, WeeklyNote
 
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "dept", "is_past_student", "user", "joined_at")
+    list_display = ("full_name", "dept", "session", "is_past_student", "is_organiser", "user")
+    list_filter = ("is_organiser", "is_past_student")
     search_fields = ("full_name", "dept", "user__email")
 
 

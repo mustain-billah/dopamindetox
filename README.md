@@ -81,6 +81,23 @@ python manage.py reset_challenge --yes    # deletes every day log and weekly not
 Accounts and the roster survive, so nobody signs up twice. `--accounts` also
 unclaims every place, which is rarely what you want.
 
+## Organisers
+
+A participant marked **organiser** runs the challenge instead of competing in
+it. They are left off the board and out of its totals, and they can open any
+participant from the board to read that person's whole log — every day's
+answers, how many times they stopped themselves, what they did instead, and the
+reason they gave. Nobody else can see that, and the rules page says so plainly,
+because people should know before they write anything.
+
+A Django staff account is treated as an organiser automatically. To mark someone
+else, or to undo it:
+
+```bash
+python manage.py make_organiser someone@example.com
+python manage.py make_organiser someone@example.com --undo
+```
+
 ## The roster
 
 `tracker/roster.py` holds the group as name, department, session and whether

@@ -9,6 +9,7 @@ urlpatterns = [
     path("day/<str:day>/", views.day_view, name="day"),
     path("week/", views.weekly, name="weekly"),
     path("board/", views.board, name="board"),
+    path("board/<int:pk>/", views.person, name="person"),
     path("rules/", views.rules, name="rules"),
     path("me/", views.profile, name="profile"),
     path("signup/", views.signup, name="signup"),

@@ -195,6 +195,21 @@ part — so use **My name is not on the list** and type it in, or add yourself t
 
 If anything is wrong, the **Error log** link in the Web tab has the traceback.
 
+### Step 9b — make yourself the organiser
+
+You are running this, not competing. After claiming a place at `/signup/`, in a
+Bash console:
+
+```bash
+cd ~/dopamindetox && workon detox-venv
+python manage.py make_organiser your@email.com
+```
+
+That keeps you off the board and out of its totals, and puts an **Open** link
+beside each person there. Open shows their whole log, including what they wrote
+in "what you did instead" and "reason" — nobody else can see that, and the rules
+page tells participants so.
+
 ### Step 10 — send the link
 
 Send the group:

@@ -65,6 +65,11 @@ class Participant(models.Model):
     session = models.CharField("Session", max_length=20, blank=True,
                                help_text="For example: 2005-06")
     is_past_student = models.BooleanField("Past student", default=False)
+    is_organiser = models.BooleanField(
+        "Organiser", default=False,
+        help_text="Runs the challenge instead of competing: kept off the board, "
+                  "and can read everyone's notes.",
+    )
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -76,6 +81,10 @@ class Participant(models.Model):
     @property
     def is_claimed(self) -> bool:
         return self.user_id is not None
+
+    @property
+    def competes(self) -> bool:
+        return not self.is_organiser
 
     @property
     def where(self) -> str:

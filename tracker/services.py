@@ -100,10 +100,13 @@ def build_scorecard(participant: Participant, logs=None, today: dt.date | None =
 
 
 def leaderboard(today: dt.date | None = None) -> list[Scorecard]:
+    """Everyone who is competing, best first. Organisers are not on the board."""
     today = today or dt.date.today()
     cards = [
         build_scorecard(p, p.logs.all(), today=today)
-        for p in Participant.objects.select_related("user").prefetch_related("logs")
+        for p in Participant.objects.filter(is_organiser=False)
+        .select_related("user")
+        .prefetch_related("logs")
     ]
     cards.sort(key=lambda c: c.rank_key)
     return cards
