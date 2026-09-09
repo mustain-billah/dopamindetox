@@ -41,14 +41,28 @@ class Scorecard:
         return self.used_days == 0
 
     @property
+    def has_joined(self) -> bool:
+        return self.participant.is_claimed
+
+    @property
     def rank_key(self) -> tuple:
         """Whoever stayed away the whole time comes first.
 
-        Breaking a rule counts against you first. Using something for study or
-        work is allowed, but a day with nothing at all still ranks above it.
-        Logging more days settles what is left.
+        Anyone who has filled in at least one day ranks above anyone who has
+        not — otherwise a person who never signed in would sit at the top on
+        zeroes. After that: breaking a rule counts against you first; using
+        something for study or work is allowed, but a day with nothing at all
+        still ranks above it; filling in more days settles what is left. Among
+        people who have not started, those who have at least joined come first.
         """
-        return (self.used_days, self.work_days, -self.logged_days, self.participant.full_name)
+        return (
+            0 if self.logged_days else 1,
+            self.used_days,
+            self.work_days,
+            -self.logged_days,
+            0 if self.has_joined else 1,
+            self.participant.full_name,
+        )
 
 
 def build_scorecard(participant: Participant, logs=None, today: dt.date | None = None) -> Scorecard:
@@ -94,6 +108,7 @@ def leaderboard(today: dt.date | None = None) -> list[Scorecard]:
 def group_totals(cards: list[Scorecard]) -> dict:
     return {
         "people": len(cards),
+        "joined": sum(1 for c in cards if c.has_joined),
         "on_track": sum(1 for c in cards if c.on_track and c.logged_days),
         "clean_days": sum(c.clean_days for c in cards),
         "said_no": sum(c.said_no for c in cards),

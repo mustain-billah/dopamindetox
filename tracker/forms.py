@@ -5,22 +5,46 @@ from __future__ import annotations
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import User
+from django.db import transaction
 
 from .models import CATEGORY_KEYS, DayLog, Participant, WeeklyNote
 
 
 class SignUpForm(forms.Form):
-    full_name = forms.CharField(label="Your name", max_length=120)
-    email = forms.EmailField(label="Email")
-    dept = forms.CharField(
-        label="Department and session", max_length=80, required=False,
-        help_text="For example: BGE (2005-06)",
+    """Claim a place that already exists, or add yourself if you are not listed.
+
+    Everyone who said they were joining is already in the list with the name
+    and department they gave, so almost everybody only picks their name and
+    sets an email and password.
+    """
+
+    who = forms.ModelChoiceField(
+        label="Find your name",
+        queryset=Participant.objects.none(),
+        required=False,
+        empty_label="Choose your name…",
+        # The queryset holds only unclaimed people, so a name that has just
+        # been taken lands here. Django's stock wording is unhelpful.
+        error_messages={
+            "invalid_choice": "Somebody has just claimed that name. Please log in instead."
+        },
     )
-    is_past_student = forms.BooleanField(label="I am a past student", required=False)
+    email = forms.EmailField(label="Email")
     password = forms.CharField(
         label="Password", widget=forms.PasswordInput, min_length=8,
         help_text="At least 8 characters.",
     )
+    full_name = forms.CharField(label="Name", max_length=120, required=False)
+    dept = forms.CharField(label="Department", max_length=60, required=False)
+    session = forms.CharField(label="Session", max_length=20, required=False)
+    is_past_student = forms.BooleanField(label="I am a past student", required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        unclaimed = Participant.objects.filter(user__isnull=True).order_by("full_name")
+        self.fields["who"].queryset = unclaimed
+        self.fields["who"].label_from_instance = lambda p: p.label
+        self.unclaimed_count = unclaimed.count()
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
@@ -28,20 +52,46 @@ class SignUpForm(forms.Form):
             raise forms.ValidationError("That email is already signed up. Log in instead.")
         return email
 
+    def clean(self):
+        cleaned = super().clean()
+        person = cleaned.get("who")
+        if person is None and "who" not in self.errors and not (cleaned.get("full_name") or "").strip():
+            self.add_error(
+                "full_name",
+                "Pick your name from the list, or type it here if it is not there.",
+            )
+        return cleaned
+
+    @transaction.atomic
     def save(self) -> User:
         data = self.cleaned_data
+        person = data.get("who")
+        if person is not None:
+            # Re-read inside the transaction so two people cannot claim one row.
+            person = Participant.objects.select_for_update().get(pk=person.pk)
+            if person.is_claimed:
+                raise forms.ValidationError("Somebody has just claimed that name.")
+            display_name = person.full_name
+        else:
+            display_name = data["full_name"].strip()
+
         user = User.objects.create_user(
             username=data["email"][:150],
             email=data["email"],
             password=data["password"],
-            first_name=data["full_name"][:150],
+            first_name=display_name[:150],
         )
-        Participant.objects.create(
-            user=user,
-            full_name=data["full_name"],
-            dept=data.get("dept", ""),
-            is_past_student=data.get("is_past_student", False),
-        )
+        if person is not None:
+            person.user = user
+            person.save(update_fields=["user"])
+        else:
+            Participant.objects.create(
+                user=user,
+                full_name=display_name,
+                dept=data.get("dept", "").strip(),
+                session=data.get("session", "").strip(),
+                is_past_student=data.get("is_past_student", False),
+            )
         return user
 
 
@@ -80,4 +130,4 @@ class WeeklyNoteForm(forms.ModelForm):
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = Participant
-        fields = ["full_name", "dept", "is_past_student"]
+        fields = ["full_name", "dept", "session", "is_past_student"]

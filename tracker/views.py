@@ -68,6 +68,9 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
         return redirect(reverse("day", args=[date.isoformat()]))
 
     card = services.build_scorecard(participant)
+    # Days of the challenge that have already happened, so the breakdown can
+    # say how many are still blank. Zero before the challenge starts.
+    elapsed = min(max(services.day_number(dt.date.today()), 0), total_days())
     return render(
         request,
         "tracker/day.html",
@@ -81,6 +84,8 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
             "prev_day": date - dt.timedelta(days=1),
             "next_day": date + dt.timedelta(days=1) if date < dt.date.today() else None,
             "card": card,
+            "elapsed": elapsed,
+            "missed_days": max(0, elapsed - card.logged_days),
             "grid": build_grid(card),
             "marks": Mark,
         },

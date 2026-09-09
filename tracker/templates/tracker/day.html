@@ -37,8 +37,8 @@
 
   <div class="q">
     <div>
-      <div class="name">Times you said no</div>
-      <div class="help">How often you reached for something and stopped yourself.</div>
+      <div class="name">Times you stopped yourself</div>
+      <div class="help">How often you reached for something and put the phone down.</div>
     </div>
     <div>{{ form.said_no }}</div>
   </div>
@@ -62,25 +62,53 @@
 </form>
 
 <div class="tiles">
-  <div class="tile"><span class="k">Streak</span><span class="v">{{ card.streak }}</span><span class="u">days in a row</span></div>
-  <div class="tile"><span class="k">Clean days</span><span class="v">{{ card.clean_days }}</span><span class="u">nothing at all</span></div>
-  <div class="tile"><span class="k">Study or work</span><span class="v">{{ card.work_days }}</span><span class="u">days</span></div>
-  <div class="tile"><span class="k">Days you used it</span><span class="v">{{ card.used_days }}</span><span class="u">days</span></div>
-  <div class="tile"><span class="k">Times you said no</span><span class="v">{{ card.said_no }}</span><span class="u">so far</span></div>
+  <div class="tile">
+    <span class="k">Days in a row</span><span class="v">{{ card.streak }}</span>
+    <span class="u">without slipping</span>
+  </div>
+  <div class="tile">
+    <span class="k">Times you stopped yourself</span><span class="v">{{ card.said_no }}</span>
+    <span class="u">wanted to, and didn't</span>
+  </div>
 </div>
 
 <div class="card">
-  <h2>All {{ total_days }} days</h2>
-  <div class="gridwrap" style="margin-top:14px">
+  <div class="head">
+    <h2>Your {{ elapsed }} day{{ elapsed|pluralize }} so far</h2>
+    <span class="label">{{ total_days }} in the whole challenge</span>
+  </div>
+  <p class="tiny muted">Every day you fill in is one of these three.</p>
+
+  <div class="breakdown">
+    <div class="brow">
+      <span class="dot" style="background:var(--no)"></span>
+      <span class="num">{{ card.clean_days }}</span>
+      <span class="what">nothing at all</span>
+    </div>
+    <div class="brow">
+      <span class="dot" style="background:var(--work)"></span>
+      <span class="num">{{ card.work_days }}</span>
+      <span class="what">only for study or work</span>
+    </div>
+    <div class="brow">
+      <span class="dot" style="background:var(--yes)"></span>
+      <span class="num">{{ card.used_days }}</span>
+      <span class="what">you slipped</span>
+    </div>
+    <div class="brow none">
+      <span class="dot" style="background:var(--blank)"></span>
+      <span class="num">{{ missed_days }}</span>
+      <span class="what">not filled in yet</span>
+    </div>
+  </div>
+
+  <div class="gridwrap" style="margin-top:20px">
     <div class="cal">
       {% for c in grid %}<span class="{{ c.status }}{% if c.future %} future{% endif %}{% if c.is_today %} now{% endif %}" title="{{ c.date|date:'j M' }}"></span>{% endfor %}
     </div>
   </div>
-  <div class="key">
-    <span><i style="background:var(--no)"></i>Clean</span>
-    <span><i style="background:var(--work)"></i>Study or work</span>
-    <span><i style="background:var(--yes)"></i>Used it</span>
-    <span><i style="background:var(--blank)"></i>Not filled in</span>
-  </div>
+  <p class="tiny muted" style="margin-top:12px">
+    One square per day, in the same colours. The ringed square is today; the pale ones are still ahead.
+  </p>
 </div>
 {% endblock %}

@@ -108,8 +108,18 @@ python manage.py createsuperuser
 python manage.py collectstatic --noinput
 ```
 
-The superuser is your admin login at `/admin/`. You will still sign up as a
-normal participant in step 9.
+`migrate` also creates the nineteen people from `tracker/roster.py`, with the
+names and departments they already gave — so nobody has to type their details
+in again. Check it worked:
+
+```bash
+python manage.py shell -c "from tracker.models import Participant; print(Participant.objects.count(), 'people on the list')"
+```
+
+Expect `19 people on the list`.
+
+The superuser is your admin login at `/admin/`. You will still claim a place as
+a normal participant in step 9.
 
 ---
 
@@ -176,8 +186,12 @@ Then hit the green **Reload** button. Nothing takes effect until you reload.
 
 <https://dopamindetox.pythonanywhere.com/rules/>
 
-Sign up at `/signup/`, fill in today, press **Save**, and check that
-`/board/` shows you.
+Go to `/signup/`, find your name in the list, add an email and a password.
+Fill in today, press **Save**, and check that `/board/` shows you.
+
+Your own name is not on the list — you were organising, not listed as taking
+part — so use **My name is not on the list** and type it in, or add yourself to
+`tracker/roster.py` and run `python manage.py sync_roster`.
 
 If anything is wrong, the **Error log** link in the Web tab has the traceback.
 
@@ -187,11 +201,15 @@ Send the group:
 
 > **https://dopamindetox.pythonanywhere.com/signup/**
 >
-> Sign up with your own email. You fill in your own day; nobody else can change
-> it. Everyone can see everyone's totals on the board.
+> Your name is already on the list — find it, then set an email and a password.
+> You fill in your own day; nobody else can change it. Everyone can see
+> everyone's totals on the board.
 
-Do not create accounts for people — each person registers themselves, and that
+Do not create accounts for people. Each person claims their own place, and that
 is what makes their row theirs.
+
+If somebody is missing from the list, add them to `tracker/roster.py`, push,
+`git pull` on the server, then run `python manage.py sync_roster` and reload.
 
 ---
 
@@ -229,6 +247,8 @@ Download it from the **Files** tab. Worth doing monthly, and before any update.
 | `ModuleNotFoundError: No module named 'config'` | The `path` line in the WSGI file is wrong |
 | `ImproperlyConfigured: DJANGO_SECRET_KEY is still the development default` | Working as designed — step 5 didn't run |
 | `ImportError: No module named django` | Virtualenv path in step 7 is wrong, or step 4 failed |
+| Someone's name is missing from the sign-up list | Add them to `tracker/roster.py`, then `python manage.py sync_roster` |
+| "Somebody has just claimed that name" | That name is already taken — log in instead, or ask who took it |
 | Wrong day rolls over at the wrong hour | `DJANGO_TIME_ZONE` — it decides when "today" changes |
 | Changes don't show up | You didn't hit **Reload** |
 

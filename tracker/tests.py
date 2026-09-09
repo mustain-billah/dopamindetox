@@ -95,6 +95,19 @@ class StreakTests(Base):
 
 
 class LeaderboardTests(Base):
+    def order_of(self, *names, today=None):
+        """Ranking restricted to the people this test made.
+
+        The roster migration pre-creates everyone in the real group, so the
+        board always holds more rows than a test set up itself.
+        """
+        wanted = set(names)
+        return [
+            c.participant.full_name
+            for c in services.leaderboard(today=today)
+            if c.participant.full_name in wanted
+        ]
+
     def test_whoever_stayed_away_the_whole_time_is_first(self):
         pure = self.join("Pure", "pure@example.com")
         work = self.join("Work", "work@example.com")
@@ -104,8 +117,10 @@ class LeaderboardTests(Base):
             self.log(pure, d)
             self.log(work, d, youtube="W")
             self.log(broke, d, facebook="Y" if offset == 0 else "N")
-        cards = services.leaderboard(today=START + dt.timedelta(days=4))
-        self.assertEqual([c.participant.full_name for c in cards], ["Pure", "Work", "Broke"])
+        self.assertEqual(
+            self.order_of("Pure", "Work", "Broke", today=START + dt.timedelta(days=4)),
+            ["Pure", "Work", "Broke"],
+        )
 
     def test_fewer_work_days_wins_when_nobody_broke_the_rule(self):
         few = self.join("Few", "few@example.com")
@@ -114,9 +129,9 @@ class LeaderboardTests(Base):
             d = START + dt.timedelta(days=offset)
             self.log(few, d, youtube="W" if offset < 2 else "N")
             self.log(many, d, youtube="W" if offset < 5 else "N")
-        cards = services.leaderboard(today=START + dt.timedelta(days=5))
-        self.assertEqual([c.participant.full_name for c in cards], ["Few", "Many"])
-        self.assertTrue(all(c.on_track for c in cards))
+        self.assertEqual(
+            self.order_of("Few", "Many", today=START + dt.timedelta(days=5)), ["Few", "Many"]
+        )
 
     def test_filling_in_more_days_settles_a_remaining_tie(self):
         keen = self.join("Keen", "keen@example.com")
@@ -124,34 +139,39 @@ class LeaderboardTests(Base):
         for offset in range(5):
             self.log(keen, START + dt.timedelta(days=offset))
         self.log(quiet, START)
-        cards = services.leaderboard(today=START + dt.timedelta(days=4))
-        self.assertEqual([c.participant.full_name for c in cards], ["Keen", "Quiet"])
+        self.assertEqual(
+            self.order_of("Keen", "Quiet", today=START + dt.timedelta(days=4)), ["Keen", "Quiet"]
+        )
 
-    def test_group_totals(self):
+    def test_group_totals_count_the_whole_list_not_just_the_active(self):
         a, b = self.join("A", "a@example.com"), self.join("B", "b@example.com")
         self.log(a, START, said_no=2)
         self.log(b, START, news="Y", said_no=1)
         totals = services.group_totals(services.leaderboard(today=START))
-        self.assertEqual((totals["people"], totals["on_track"], totals["said_no"]), (2, 1, 3))
+        self.assertEqual(totals["people"], Participant.objects.count())
+        self.assertEqual(totals["joined"], 2)
+        self.assertEqual(totals["on_track"], 1)
+        self.assertEqual(totals["said_no"], 3)
 
 
 class AccountTests(Base):
-    def test_signup_creates_the_account_and_logs_you_in(self):
+    def test_someone_not_on_the_list_can_still_add_themselves(self):
         response = self.client.post(
             reverse("signup"),
-            {"full_name": "Md Manik Islam", "email": "Manik@Example.com",
-             "dept": "BGE (24-25)", "password": "detox-pass-2026"},
+            {"who": "", "full_name": "Md Manik Islam", "email": "Manik@Example.com",
+             "dept": "BGE", "session": "24-25", "password": "detox-pass-2026"},
         )
         self.assertRedirects(response, reverse("today"))
         user = User.objects.get(email="manik@example.com")
         self.assertEqual(user.participant.full_name, "Md Manik Islam")
-        self.assertEqual(user.participant.dept, "BGE (24-25)")
+        self.assertEqual(user.participant.where, "BGE (24-25)")
 
     def test_the_same_email_cannot_join_twice(self):
         self.join("First", "taken@example.com")
         response = self.client.post(
             reverse("signup"),
-            {"full_name": "Second", "email": "taken@example.com", "password": "detox-pass-2026"},
+            {"who": "", "full_name": "Second", "email": "taken@example.com",
+             "password": "detox-pass-2026"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "already signed up")
@@ -160,7 +180,7 @@ class AccountTests(Base):
     def test_a_short_password_is_refused(self):
         response = self.client.post(
             reverse("signup"),
-            {"full_name": "Short", "email": "short@example.com", "password": "abc"},
+            {"who": "", "full_name": "Short", "email": "short@example.com", "password": "abc"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(User.objects.filter(email="short@example.com").count(), 0)
@@ -284,3 +304,176 @@ class OwnershipTests(Base):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Nobody")
         self.assertContains(response, "123 days")
+
+
+class BreakdownTests(Base):
+    """The three day types must add up, and the blank count must be right."""
+
+    def setUp(self):
+        super().setUp()
+        self.me = self.join("Me", "me@example.com")
+        self.client.force_login(self.me.user)
+
+    def test_the_three_kinds_of_day_add_up_to_what_was_filled_in(self):
+        for offset, marks in enumerate([{}, {}, {"youtube": "W"}, {"news": "Y"}]):
+            self.log(self.me, dt.date.today() - dt.timedelta(days=offset), **marks)
+        card = services.build_scorecard(self.me)
+        self.assertEqual(card.clean_days + card.work_days + card.used_days, card.logged_days)
+        self.assertEqual(card.logged_days, 4)
+
+    @override_settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=9),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=10))
+    def test_not_filled_in_counts_only_days_that_have_happened(self):
+        for offset in range(3):
+            self.log(self.me, dt.date.today() - dt.timedelta(days=offset))
+        response = self.client.get(reverse("today"))
+        # Ten days have passed, three are filled in, so seven are blank —
+        # the ten days still ahead must not be counted as missed.
+        self.assertEqual(response.context["elapsed"], 10)
+        self.assertEqual(response.context["missed_days"], 7)
+
+    @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=5),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=100))
+    def test_nothing_is_missed_before_the_challenge_starts(self):
+        response = self.client.get(reverse("today"))
+        self.assertEqual(response.context["elapsed"], 0)
+        self.assertEqual(response.context["missed_days"], 0)
+
+    def test_the_day_page_no_longer_says_streak_clean_or_said_no(self):
+        response = self.client.get(reverse("today"))
+        body = response.content.decode()
+        for gone in ["Times you said no", "Clean days", ">Streak<"]:
+            self.assertNotIn(gone, body)
+        for wanted in ["Days in a row", "Times you stopped yourself",
+                       "nothing at all", "only for study or work", "you slipped"]:
+            self.assertIn(wanted, body)
+
+
+@override_settings(CHALLENGE_START=START, CHALLENGE_END=END)
+class RosterTests(TestCase):
+    """Everyone who said they were joining exists before anyone signs up."""
+
+    def test_the_migration_created_the_whole_roster(self):
+        from .roster import ROSTER
+        self.assertEqual(Participant.objects.count(), len(ROSTER))
+        self.assertEqual(Participant.objects.filter(user__isnull=True).count(), len(ROSTER))
+
+    def test_both_people_called_sabbir_hossen_are_separate_rows(self):
+        both = Participant.objects.filter(full_name="Sabbir Hossen").order_by("dept")
+        self.assertEqual(both.count(), 2)
+        self.assertEqual([p.where for p in both], ["CPS (21-22)", "TEX (24-25)"])
+
+    def test_details_carry_the_department_and_session_they_gave(self):
+        razzak = Participant.objects.get(full_name="Muhammad Abdur Razzak")
+        self.assertEqual(razzak.where, "BGE (2005-06)")
+        self.assertTrue(razzak.is_past_student)
+        self.assertEqual(razzak.label, "Muhammad Abdur Razzak — BGE (2005-06)")
+        current = Participant.objects.get(full_name="Md Manik Islam")
+        self.assertFalse(current.is_past_student)
+
+    def test_someone_with_no_session_still_reads_cleanly(self):
+        shahadat = Participant.objects.get(full_name="Md. Shahadat Hossain")
+        self.assertEqual(shahadat.where, "CSE")
+
+    def test_sync_is_safe_to_run_again(self):
+        from .roster import sync
+        before = Participant.objects.count()
+        result = sync(Participant)
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(Participant.objects.count(), before)
+
+    def test_sync_never_overwrites_a_claimed_row(self):
+        from .roster import sync
+        person = Participant.objects.get(full_name="Ziaul Haq")
+        user = User.objects.create_user(username="z@example.com", email="z@example.com",
+                                        password="detox-pass-2026")
+        person.user = user
+        person.session = "2006-2007"          # they corrected it themselves
+        person.save()
+        sync(Participant)
+        person.refresh_from_db()
+        self.assertEqual(person.session, "2006-2007")
+
+
+@override_settings(CHALLENGE_START=START, CHALLENGE_END=END)
+class ClaimTests(TestCase):
+    """Signing up attaches you to the row that already has your details."""
+
+    def claim(self, person, email="me@example.com", **extra):
+        data = {"who": person.pk if person else "", "email": email,
+                "password": "detox-pass-2026"}
+        data.update(extra)
+        return self.client.post(reverse("signup"), data)
+
+    def test_picking_your_name_keeps_the_details_you_already_gave(self):
+        person = Participant.objects.get(full_name="Mohammad Abdur Rashed")
+        response = self.claim(person, "rashed@example.com")
+        self.assertRedirects(response, reverse("today"))
+        person.refresh_from_db()
+        self.assertTrue(person.is_claimed)
+        self.assertEqual(person.user.email, "rashed@example.com")
+        self.assertEqual(person.where, "ESRM (2003-04)")
+        # No second row was invented for the same person.
+        self.assertEqual(Participant.objects.filter(full_name="Mohammad Abdur Rashed").count(), 1)
+
+    def test_a_claimed_name_disappears_from_the_list(self):
+        person = Participant.objects.get(full_name="Omar Faruk")
+        self.claim(person, "omar@example.com")
+        self.client.logout()
+        response = self.client.get(reverse("signup"))
+        self.assertNotContains(response, "Omar Faruk")
+        self.assertContains(response, "Nasib Iqbal")
+
+    def test_the_same_name_cannot_be_claimed_twice(self):
+        person = Participant.objects.get(full_name="Nasib Iqbal")
+        self.claim(person, "first@example.com")
+        self.client.logout()
+        response = self.claim(person, "second@example.com")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "just claimed that name")
+        self.assertEqual(User.objects.filter(email="second@example.com").count(), 0)
+
+    def test_choosing_nobody_and_typing_nothing_is_refused(self):
+        response = self.claim(None, "blank@example.com")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pick your name from the list")
+        self.assertEqual(User.objects.count(), 0)
+
+    def test_the_signup_page_lists_everyone_who_has_not_claimed(self):
+        response = self.client.get(reverse("signup"))
+        self.assertContains(response, "Muhammad Abdur Razzak — BGE (2005-06)")
+        self.assertContains(response, "19 people on the list")
+
+    def test_the_dropdown_asks_you_to_choose_rather_than_defaulting_to_not_listed(self):
+        body = self.client.get(reverse("signup")).content.decode()
+        first_option = body.split("<select", 1)[1].split("<option", 2)[1]
+        self.assertIn("Choose your name", first_option)
+
+
+@override_settings(CHALLENGE_START=START, CHALLENGE_END=END)
+class BoardWithRosterTests(TestCase):
+    def setUp(self):
+        super().setUp()
+        self.person = Participant.objects.get(full_name="Ziaul Haq")
+        user = User.objects.create_user(username="z@example.com", email="z@example.com",
+                                        password="detox-pass-2026")
+        self.person.user = user
+        self.person.save()
+        self.client.force_login(user)
+
+    def test_the_board_shows_everyone_including_people_who_have_not_joined(self):
+        response = self.client.get(reverse("board"))
+        self.assertEqual(len(response.context["cards"]), Participant.objects.count())
+        self.assertContains(response, "Not joined yet")
+        self.assertContains(response, "has not signed in yet")
+        self.assertEqual(response.context["totals"]["joined"], 1)
+
+    def test_someone_who_has_never_signed_in_does_not_top_the_board(self):
+        DayLog.objects.create(participant=self.person, date=START,
+                              youtube="N", facebook="N", instagram="N",
+                              news="Y", other="N", watching="N")
+        cards = services.leaderboard(today=START)
+        # Ziaul slipped once, but the eighteen people on zero have not started
+        # at all, so he still ranks above them.
+        self.assertEqual(cards[0].participant.full_name, "Ziaul Haq")
+        self.assertFalse(cards[1].has_joined)

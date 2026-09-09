@@ -73,6 +73,13 @@ main{max-width:920px;margin:0 auto;padding:24px 18px 72px;display:flex;flex-dire
 .progress i.now{background:var(--no);border-radius:2px}
 .pmeta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-top:6px;gap:10px}
 
+select{font:inherit;font-size:15px;font-family:var(--ui);color:var(--ink);background:var(--ground);
+  border:1px solid var(--line-2);border-radius:9px;padding:9px 11px;width:100%}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+details.notlisted{border-top:1px solid var(--line);padding-top:14px;margin-bottom:16px}
+details.notlisted summary{cursor:pointer;font-size:14px;color:var(--ink-2);list-style-position:outside}
+details.notlisted summary:hover{color:var(--no)}
+details.notlisted[open] summary{margin-bottom:4px}
 input[type=text],input[type=email],input[type=password],input[type=number]{
   font:inherit;font-size:15px;font-family:var(--ui);color:var(--ink);background:var(--ground);
   border:1px solid var(--line-2);border-radius:9px;padding:9px 11px;width:100%}
@@ -111,6 +118,16 @@ input[type=number]{max-width:110px;font-family:var(--mono)}
 .tile .k{font-size:12.5px;color:var(--ink-3)}
 .tile .v{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
 .tile .u{font-size:12.5px;color:var(--ink-3)}
+
+.breakdown{display:flex;flex-direction:column;margin-top:6px}
+.brow{display:grid;grid-template-columns:13px 3.5ch 1fr;gap:14px;align-items:center;
+  padding:11px 0;border-top:1px solid var(--line)}
+.brow:first-child{border-top:none}
+.brow .dot{width:13px;height:13px;border-radius:3px}
+.brow .num{font-family:var(--mono);font-size:23px;font-weight:600;text-align:right;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.brow .what{color:var(--ink-2)}
+.brow.none .num,.brow.none .what{color:var(--ink-3)}
 
 .gridwrap{overflow-x:auto;padding-bottom:4px}
 .cal{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,14px);gap:3px;width:max-content}

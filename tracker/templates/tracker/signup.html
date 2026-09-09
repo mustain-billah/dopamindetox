@@ -1,14 +1,65 @@
 {% extends "tracker/base.html" %}
 {% block title %}Join{% endblock %}
 {% block content %}
-<div class="card narrow">
-  <h1>Join the challenge</h1>
-  <p class="tiny muted" style="margin:6px 0 20px">Sign up with your email. You will log in with it later, and only you can fill in your own days.</p>
+<div class="card narrow" style="max-width:470px">
+  <h1>Claim your place</h1>
+  <p class="tiny muted" style="margin:6px 0 20px">
+    {% if form.unclaimed_count %}
+      Everyone who said they were joining is already on the list with the name and
+      department they gave. Find yourself, then set an email and password — that
+      email is how you log in, and only you can fill in your own days.
+    {% else %}
+      Sign up with your email. That is how you log in, and only you can fill in
+      your own days.
+    {% endif %}
+  </p>
+
   <form method="post" novalidate>
     {% csrf_token %}
-    {% include "tracker/_form.html" %}
-    <button class="btn go" type="submit" style="width:100%">Create my account</button>
+
+    {% if form.unclaimed_count %}
+    <div class="field">
+      <label for="{{ form.who.id_for_label }}">Find your name</label>
+      {{ form.who }}
+      <span class="help">{{ form.unclaimed_count }} {{ form.unclaimed_count|pluralize:"person,people" }} on the list have not claimed a place yet.</span>
+      {% for e in form.who.errors %}<span class="err">{{ e }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="field">
+      <label for="{{ form.email.id_for_label }}">Email</label>{{ form.email }}
+      {% for e in form.email.errors %}<span class="err">{{ e }}</span>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="{{ form.password.id_for_label }}">Password</label>{{ form.password }}
+      <span class="help">{{ form.password.help_text }}</span>
+      {% for e in form.password.errors %}<span class="err">{{ e }}</span>{% endfor %}
+    </div>
+
+    <details class="notlisted" {% if form.full_name.errors or form.full_name.value %}open{% endif %}>
+      <summary>My name is not on the list</summary>
+      <p class="tiny muted" style="margin:8px 0 12px">Leave the box above on “Choose your name…” and fill these in instead.</p>
+      <div class="field">
+        <label for="{{ form.full_name.id_for_label }}">Name</label>{{ form.full_name }}
+        {% for e in form.full_name.errors %}<span class="err">{{ e }}</span>{% endfor %}
+      </div>
+      <div class="two">
+        <div class="field">
+          <label for="{{ form.dept.id_for_label }}">Department</label>{{ form.dept }}
+          <span class="help">e.g. BGE</span>
+        </div>
+        <div class="field">
+          <label for="{{ form.session.id_for_label }}">Session</label>{{ form.session }}
+          <span class="help">e.g. 2005-06</span>
+        </div>
+      </div>
+      <div class="field check">{{ form.is_past_student }}<label for="{{ form.is_past_student.id_for_label }}">I am a past student</label></div>
+    </details>
+
+    {% for e in form.non_field_errors %}<p class="err" style="color:var(--yes)">{{ e }}</p>{% endfor %}
+    <button class="btn go" type="submit" style="width:100%;margin-top:6px">Create my account</button>
   </form>
-  <p class="tiny muted" style="margin-top:16px">Already signed up? <a href="{% url 'login' %}">Log in</a></p>
+
+  <p class="tiny muted" style="margin-top:16px">Already claimed your place? <a href="{% url 'login' %}">Log in</a></p>
 </div>
 {% endblock %}

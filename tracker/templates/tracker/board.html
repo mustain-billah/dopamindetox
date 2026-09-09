@@ -13,10 +13,10 @@
 </div>
 
 <div class="tiles">
-  <div class="tile"><span class="k">Taking part</span><span class="v">{{ totals.people }}</span><span class="u">people</span></div>
-  <div class="tile"><span class="k">Still in</span><span class="v">{{ totals.on_track }}</span><span class="u">never broke it</span></div>
-  <div class="tile"><span class="k">Clean days</span><span class="v">{{ totals.clean_days }}</span><span class="u">between everyone</span></div>
-  <div class="tile"><span class="k">Times said no</span><span class="v">{{ totals.said_no }}</span><span class="u">between everyone</span></div>
+  <div class="tile"><span class="k">On the list</span><span class="v">{{ totals.people }}</span><span class="u">{{ totals.joined }} have signed in</span></div>
+  <div class="tile"><span class="k">Still in</span><span class="v">{{ totals.on_track }}</span><span class="u">never slipped</span></div>
+  <div class="tile"><span class="k">Days with nothing at all</span><span class="v">{{ totals.clean_days }}</span><span class="u">between everyone</span></div>
+  <div class="tile"><span class="k">Times someone stopped themselves</span><span class="v">{{ totals.said_no }}</span><span class="u">between everyone</span></div>
 </div>
 
 <div class="card">
@@ -25,8 +25,8 @@
       <thead>
         <tr>
           <th style="width:26px"></th><th>Name</th><th>Status</th>
-          <th class="n">Streak</th><th class="n">Clean</th>
-          <th class="n">Study/work</th><th class="n">Used it</th><th class="n">Said no</th>
+          <th class="n">In a row</th><th class="n">Nothing</th>
+          <th class="n">Work only</th><th class="n">Slipped</th><th class="n">Stopped</th>
         </tr>
       </thead>
       <tbody>
@@ -36,28 +36,38 @@
           <td>
             <div class="who">
               <span>{{ c.participant.full_name }}</span>
-              <span class="dept">{{ c.participant.dept }}{% if c.participant.is_past_student %} · past student{% endif %}</span>
+              <span class="dept">{{ c.participant.where }}{% if c.participant.is_past_student %} · past student{% endif %}</span>
             </div>
           </td>
           <td>
-            {% if c.logged_days == 0 %}<span class="tag">Not started</span>
+            {% if not c.has_joined %}<span class="tag">Not joined yet</span>
+            {% elif c.logged_days == 0 %}<span class="tag">Not started</span>
             {% elif c.on_track %}<span class="tag ok">Still in</span>
-            {% else %}<span class="tag out">Broke it</span>{% endif %}
+            {% else %}<span class="tag out">Slipped</span>{% endif %}
           </td>
+          {% if c.has_joined %}
           <td class="n">{{ c.streak }}</td>
           <td class="n">{{ c.clean_days }}</td>
           <td class="n">{{ c.work_days }}</td>
           <td class="n">{{ c.used_days }}</td>
           <td class="n">{{ c.said_no }}</td>
+          {% else %}
+          <td class="n muted" colspan="5">has not signed in yet</td>
+          {% endif %}
         </tr>
       {% empty %}
-        <tr><td colspan="8" class="muted">Nobody has joined yet.</td></tr>
+        <tr><td colspan="8" class="muted">Nobody is on the list yet.</td></tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
-  <p class="tiny muted" style="margin-top:14px">
-    Ordered by fewest days used, then fewest study-or-work days, then most days filled in.
-  </p>
+  <div class="tiny muted" style="margin-top:16px;display:flex;flex-direction:column;gap:5px">
+    <span><b>In a row</b> — days without slipping, up to today.
+      <b>Nothing</b> — days with no use at all.
+      <b>Work only</b> — days used just for study or a job.
+      <b>Slipped</b> — days something was used.
+      <b>Stopped</b> — times someone wanted to open something and didn't.</span>
+    <span>Ordered by fewest slips, then fewest work-only days, then most days filled in.</span>
+  </div>
 </div>
 {% endblock %}

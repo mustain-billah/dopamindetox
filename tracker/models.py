@@ -42,20 +42,47 @@ def total_days() -> int:
 
 
 class Participant(models.Model):
-    """A person in the challenge. One per account."""
+    """A person in the challenge.
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="participant")
-    full_name = models.CharField("Your name", max_length=120)
-    dept = models.CharField("Department and session", max_length=80, blank=True,
-                            help_text="For example: BGE (2005-06)")
-    is_past_student = models.BooleanField("I am a past student", default=False)
+    Everyone who said they were joining is created up front from the roster,
+    with the name and department they already gave. `user` stays empty until
+    that person claims their place with an email and password, so nobody has
+    to type their details in twice.
+    """
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="participant",
+        null=True, blank=True,
+    )
+    full_name = models.CharField("Name", max_length=120)
+    dept = models.CharField("Department", max_length=60, blank=True,
+                            help_text="For example: BGE")
+    session = models.CharField("Session", max_length=20, blank=True,
+                               help_text="For example: 2005-06")
+    is_past_student = models.BooleanField("Past student", default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["full_name"]
 
     def __str__(self) -> str:
-        return self.full_name
+        return self.label
+
+    @property
+    def is_claimed(self) -> bool:
+        return self.user_id is not None
+
+    @property
+    def where(self) -> str:
+        """Department and session as one string, e.g. "BGE (2005-06)"."""
+        if self.dept and self.session:
+            return f"{self.dept} ({self.session})"
+        return self.dept or self.session or ""
+
+    @property
+    def label(self) -> str:
+        where = self.where
+        return f"{self.full_name} — {where}" if where else self.full_name
 
 
 class DayLog(models.Model):
@@ -71,7 +98,7 @@ class DayLog(models.Model):
     other = models.CharField(max_length=1, choices=Mark.choices, default=Mark.NO)
     watching = models.CharField(max_length=1, choices=Mark.choices, default=Mark.NO)
 
-    said_no = models.PositiveSmallIntegerField("Times you said no", default=0)
+    said_no = models.PositiveSmallIntegerField("Times you stopped yourself", default=0)
     instead = models.CharField("What you did instead", max_length=200, blank=True)
     reason = models.CharField("Reason", max_length=200, blank=True)
 
