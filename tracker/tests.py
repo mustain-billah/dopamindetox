@@ -14,6 +14,12 @@ from .models import DayLog, Mark, Participant, total_days
 START = dt.date(2026, 9, 11)
 END = dt.date(2027, 1, 11)
 
+# A window that actually contains today, for the tests that drive the daily
+# form. The real challenge starts on 11 September 2026, so a test that posts
+# to "today" needs a running challenge, not the real dates.
+LIVE_START = dt.date.today() - dt.timedelta(days=30)
+LIVE_END = LIVE_START + dt.timedelta(days=122)
+
 
 @override_settings(CHALLENGE_START=START, CHALLENGE_END=END)
 class Base(TestCase):
@@ -151,7 +157,7 @@ class LeaderboardTests(Base):
         self.assertEqual(totals["people"], Participant.objects.count())
         self.assertEqual(totals["joined"], 2)
         self.assertEqual(totals["on_track"], 1)
-        self.assertEqual(totals["said_no"], 3)
+        self.assertNotIn("said_no", totals)  # a self-reported number, not a group figure
 
 
 class AccountTests(Base):
@@ -213,6 +219,7 @@ class AccountTests(Base):
         self.assertNotIn("_auth_user_id", self.client.session)
 
 
+@override_settings(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END)
 class OwnershipTests(Base):
     def setUp(self):
         super().setUp()
@@ -237,7 +244,7 @@ class OwnershipTests(Base):
         response = self.client.get(reverse("today"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(DayLog.objects.count(), 0)
-        self.assertContains(response, "not counted yet")
+        self.assertContains(response, "Not counted yet")
         self.assertEqual(services.build_scorecard(self.me).clean_days, 0)
 
     def test_the_day_counts_once_you_press_save(self):
@@ -245,7 +252,7 @@ class OwnershipTests(Base):
         self.client.post(reverse("day", args=[day]), self.full_day(said_no=2, instead="walked"))
         self.assertEqual(DayLog.objects.count(), 1)
         self.assertEqual(services.build_scorecard(self.me).clean_days, 1)
-        self.assertNotContains(self.client.get(reverse("today")), "not counted yet")
+        self.assertNotContains(self.client.get(reverse("today")), "Not counted yet")
 
     def test_saving_only_ever_writes_your_own_row(self):
         day = dt.date.today().isoformat()
@@ -261,11 +268,11 @@ class OwnershipTests(Base):
         response = self.client.get(reverse("day", args=[day]))
         self.assertEqual(response.status_code, 200)
         self.assertFalse(DayLog.objects.filter(participant=self.other).exists())
-        self.assertContains(response, "not counted yet")
+        self.assertContains(response, "Not counted yet")
         self.assertEqual(DayLog.objects.get(participant=self.me).youtube, "Y")
 
     def test_the_board_shows_everyone_but_can_change_nobody(self):
-        self.log(self.other, START, news="Y")
+        self.log(self.other, LIVE_START, news="Y")
         body = self.client.get(reverse("board")).content.decode()
         self.assertIn("Other", body)
         for marker in ['name="youtube"', 'name="said_no"', "/day/"]:
@@ -306,6 +313,7 @@ class OwnershipTests(Base):
         self.assertContains(response, "123 days")
 
 
+@override_settings(CHALLENGE_START=LIVE_START, CHALLENGE_END=LIVE_END)
 class BreakdownTests(Base):
     """The three day types must add up, and the blank count must be right."""
 
@@ -334,10 +342,10 @@ class BreakdownTests(Base):
 
     @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=5),
                        CHALLENGE_END=dt.date.today() + dt.timedelta(days=100))
-    def test_nothing_is_missed_before_the_challenge_starts(self):
+    def test_before_the_start_there_is_no_day_page_to_miss_days_on(self):
         response = self.client.get(reverse("today"))
-        self.assertEqual(response.context["elapsed"], 0)
-        self.assertEqual(response.context["missed_days"], 0)
+        self.assertTemplateUsed(response, "tracker/waiting.html")
+        self.assertNotIn("missed_days", response.context)
 
     def test_the_day_page_no_longer_says_streak_clean_or_said_no(self):
         response = self.client.get(reverse("today"))
@@ -477,3 +485,111 @@ class BoardWithRosterTests(TestCase):
         # at all, so he still ranks above them.
         self.assertEqual(cards[0].participant.full_name, "Ziaul Haq")
         self.assertFalse(cards[1].has_joined)
+
+
+class ChallengeWindowViewTests(Base):
+    """Nothing can be logged outside 11 Sep 2026 – 11 Jan 2027."""
+
+    def setUp(self):
+        super().setUp()
+        self.me = self.join("Me", "me@example.com")
+        self.client.force_login(self.me.user)
+
+    def full_day(self, **overrides):
+        data = {"youtube": "N", "facebook": "N", "instagram": "N", "news": "N",
+                "other": "N", "watching": "N", "said_no": 0, "instead": "", "reason": ""}
+        data.update(overrides)
+        return data
+
+    @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
+    def test_before_it_starts_you_get_a_countdown_not_a_form(self):
+        response = self.client.get(reverse("today"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tracker/waiting.html")
+        self.assertContains(response, "2 days to go")
+        self.assertNotContains(response, 'name="youtube"')
+
+    @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
+    def test_the_countdown_counts_to_the_start_not_to_the_end(self):
+        body = self.client.get(reverse("today")).content.decode()
+        self.assertIn("starts in 2 days", body)
+        self.assertNotIn("starts in 124 days", body)
+
+    @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
+    def test_a_day_before_the_start_cannot_be_filled_in(self):
+        yesterday = (dt.date.today() - dt.timedelta(days=1)).isoformat()
+        response = self.client.post(reverse("day", args=[yesterday]), self.full_day(), follow=True)
+        self.assertEqual(DayLog.objects.count(), 0)
+        self.assertContains(response, "The challenge starts on")
+
+    @override_settings(CHALLENGE_START=dt.date.today() + dt.timedelta(days=2),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=124))
+    def test_the_redirect_before_the_start_does_not_loop(self):
+        response = self.client.get(reverse("day", args=["2020-01-01"]), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.redirect_chain), 1)
+        self.assertTemplateUsed(response, "tracker/waiting.html")
+
+    @override_settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=200),
+                       CHALLENGE_END=dt.date.today() - dt.timedelta(days=2))
+    def test_after_it_ends_the_form_is_closed(self):
+        response = self.client.get(reverse("today"))
+        self.assertTemplateUsed(response, "tracker/waiting.html")
+        self.assertContains(response, "the four months")
+        late = (dt.date.today() - dt.timedelta(days=1)).isoformat()
+        self.client.post(reverse("day", args=[late]), self.full_day())
+        self.assertEqual(DayLog.objects.count(), 0)
+
+    @override_settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=3),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=119))
+    def test_the_first_day_has_no_previous_day_link(self):
+        first = (dt.date.today() - dt.timedelta(days=3)).isoformat()
+        response = self.client.get(reverse("day", args=[first]))
+        self.assertIsNone(response.context["prev_day"])
+        self.assertNotContains(response, "Previous day")
+
+
+class AlreadyFilledInTests(Base):
+    """Coming back to a day you have done should say so."""
+
+    def setUp(self):
+        super().setUp()
+        self.me = self.join("Me", "me@example.com")
+        self.client.force_login(self.me.user)
+
+    @override_settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=3),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=119))
+    def test_an_empty_day_asks_you_to_save(self):
+        response = self.client.get(reverse("today"))
+        self.assertContains(response, "Not counted yet")
+        self.assertContains(response, ">Save<")
+        self.assertNotContains(response, "Filled in already")
+
+    @override_settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=3),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=119))
+    def test_a_filled_day_says_so_and_offers_an_update(self):
+        self.client.post(
+            reverse("day", args=[dt.date.today().isoformat()]),
+            {"youtube": "W", "facebook": "N", "instagram": "N", "news": "N",
+             "other": "N", "watching": "N", "said_no": 2, "instead": "walked", "reason": "lecture"},
+        )
+        response = self.client.get(reverse("today"))
+        self.assertContains(response, "Filled in already")
+        self.assertContains(response, "only for study or work")
+        self.assertContains(response, ">Update<")
+        self.assertNotContains(response, "Not counted yet")
+        # and the answers come back selected, not blank
+        self.assertContains(response, 'id="youtube_W" checked')
+
+    @override_settings(CHALLENGE_START=dt.date.today() - dt.timedelta(days=3),
+                       CHALLENGE_END=dt.date.today() + dt.timedelta(days=119))
+    def test_the_board_no_longer_shows_the_self_reported_counter(self):
+        body = self.client.get(reverse("board")).content.decode()
+        self.assertNotIn("Times someone stopped themselves", body)
+        self.assertNotIn(">Stopped<", body)
+        # but it is still on your own page
+        self.assertIn("Times you stopped yourself",
+                      self.client.get(reverse("today")).content.decode())

@@ -128,7 +128,11 @@ class DayLog(models.Model):
         return Mark.NO
 
     def get_status_display_short(self) -> str:
-        return {Mark.NO: "clean", Mark.WORK: "study or work", Mark.YES: "used"}[self.status]
+        return {
+            Mark.NO: "nothing at all",
+            Mark.WORK: "only for study or work",
+            Mark.YES: "a slip",
+        }[self.status]
 
     @property
     def broke_rule(self) -> bool:

@@ -98,6 +98,11 @@ input[type=number]{max-width:110px;font-family:var(--mono)}
 .btn.go{background:var(--no);border-color:var(--no);color:var(--on-accent)}
 .btn.go:hover{color:var(--on-accent);opacity:.92}
 
+.done,.todo{margin:10px 0 12px;padding:10px 14px;border-radius:9px;font-size:14px;border:1px solid}
+.done{border-color:var(--no);color:var(--no);background:var(--no-soft)}
+.todo{border-color:var(--work);color:var(--work);background:var(--work-soft)}
+.done b,.todo b{font-weight:700}
+
 .q{display:grid;grid-template-columns:1fr auto;gap:8px 20px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
 .q:first-of-type{border-top:none;padding-top:4px}
 .q .name{font-weight:600}

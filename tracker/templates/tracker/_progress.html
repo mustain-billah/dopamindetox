@@ -4,7 +4,7 @@
 <div class="pmeta">
   <span>{{ start|date:"j M Y" }}</span>
   <span>
-    {% if phase == "before" %}starts in {{ days_left }} days
+    {% if phase == "before" %}starts in {{ days_to_start }} day{{ days_to_start|pluralize }}
     {% elif phase == "after" %}finished
     {% else %}day {{ day_no }} of {{ total_days }} · {{ days_left }} left{% endif %}
   </span>

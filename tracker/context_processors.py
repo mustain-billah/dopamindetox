@@ -25,6 +25,7 @@ def challenge(request):
         "day_no": day_no,
         "phase": phase,
         "days_left": max(0, (end - today).days),
+        "days_to_start": max(0, (start - today).days),
         "prize": settings.CHALLENGE_PRIZE,
         "currency": settings.CHALLENGE_CURRENCY,
     }

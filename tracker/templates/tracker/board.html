@@ -16,7 +16,6 @@
   <div class="tile"><span class="k">On the list</span><span class="v">{{ totals.people }}</span><span class="u">{{ totals.joined }} have signed in</span></div>
   <div class="tile"><span class="k">Still in</span><span class="v">{{ totals.on_track }}</span><span class="u">never slipped</span></div>
   <div class="tile"><span class="k">Days with nothing at all</span><span class="v">{{ totals.clean_days }}</span><span class="u">between everyone</span></div>
-  <div class="tile"><span class="k">Times someone stopped themselves</span><span class="v">{{ totals.said_no }}</span><span class="u">between everyone</span></div>
 </div>
 
 <div class="card">
@@ -26,7 +25,7 @@
         <tr>
           <th style="width:26px"></th><th>Name</th><th>Status</th>
           <th class="n">In a row</th><th class="n">Nothing</th>
-          <th class="n">Work only</th><th class="n">Slipped</th><th class="n">Stopped</th>
+          <th class="n">Work only</th><th class="n">Slipped</th>
         </tr>
       </thead>
       <tbody>
@@ -50,13 +49,12 @@
           <td class="n">{{ c.clean_days }}</td>
           <td class="n">{{ c.work_days }}</td>
           <td class="n">{{ c.used_days }}</td>
-          <td class="n">{{ c.said_no }}</td>
           {% else %}
-          <td class="n muted" colspan="5">has not signed in yet</td>
+          <td class="n muted" colspan="4">has not signed in yet</td>
           {% endif %}
         </tr>
       {% empty %}
-        <tr><td colspan="8" class="muted">Nobody is on the list yet.</td></tr>
+        <tr><td colspan="7" class="muted">Nobody is on the list yet.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -65,8 +63,7 @@
     <span><b>In a row</b> — days without slipping, up to today.
       <b>Nothing</b> — days with no use at all.
       <b>Work only</b> — days used just for study or a job.
-      <b>Slipped</b> — days something was used.
-      <b>Stopped</b> — times someone wanted to open something and didn't.</span>
+      <b>Slipped</b> — days something was used.</span>
     <span>Ordered by fewest slips, then fewest work-only days, then most days filled in.</span>
   </div>
 </div>

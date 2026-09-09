@@ -1,0 +1,43 @@
+{% extends "tracker/base.html" %}
+{% block title %}{% if phase == "before" %}Not started yet{% else %}Finished{% endif %}{% endblock %}
+{% block content %}
+
+<div class="card" style="text-align:center;padding:34px 22px">
+  {% if phase == "before" %}
+    <p class="label">Starts {{ start|date:"j F Y" }}</p>
+    <h1 style="margin:8px 0 6px">
+      {% if days_to_start == 0 %}Starts tomorrow
+      {% elif days_to_start == 1 %}One day to go
+      {% else %}{{ days_to_start }} days to go{% endif %}
+    </h1>
+    <p class="muted" style="max-width:44ch;margin:0 auto">
+      Nothing to fill in yet. Come back on {{ start|date:"l, j F" }} and this page
+      becomes your daily check-in.
+    </p>
+  {% else %}
+    <p class="label">Finished {{ end|date:"j F Y" }}</p>
+    <h1 style="margin:8px 0 6px">That's the four months</h1>
+    <p class="muted" style="max-width:44ch;margin:0 auto">
+      The challenge is over. Your days are all still here, and the board shows how
+      everyone did.
+    </p>
+  {% endif %}
+
+  <div style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <a class="btn go" href="{% url 'board' %}">See everyone</a>
+    <a class="btn" href="{% url 'rules' %}">Read the rules</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="head">
+    <h2>{{ start|date:"j F Y" }} to {{ end|date:"j F Y" }}</h2>
+    <span class="label">{{ total_days }} days</span>
+  </div>
+  {% include "tracker/_progress.html" %}
+  <p class="tiny muted" style="margin-top:14px">
+    Signed in as {{ participant.full_name }}{% if participant.where %} · {{ participant.where }}{% endif %}.
+    Your place is claimed — you do not need to do anything else until it starts.
+  </p>
+</div>
+{% endblock %}

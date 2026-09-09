@@ -16,9 +16,18 @@
 <form method="post" class="card">
   {% csrf_token %}
   <h2>Did you use any of these on {{ date|date:"l, j F" }}?</h2>
-  <p class="tiny muted" style="margin:6px 0 14px">
+  {% if was_saved %}
+  <p class="done">
+    <b>Filled in already</b> — saved {{ log.updated_at|date:"j M" }} at {{ log.updated_at|time:"H:i" }},
+    and counted as <b>{{ log.get_status_display_short }}</b>. Change anything below and press Update.
+  </p>
+  {% else %}
+  <p class="todo">
+    <b>Not counted yet.</b> Answer the six questions and press Save at the bottom.
+  </p>
+  {% endif %}
+  <p class="tiny muted" style="margin:0 0 14px">
     Answer honestly — nobody checks, and nobody can change your answers but you.
-    {% if not was_saved %}<b style="color:var(--work)">This day is not counted yet. Press Save at the bottom.</b>{% endif %}
   </p>
 
   {% for row in log.rows %}
@@ -54,8 +63,8 @@
   {% if form.errors %}<p class="err" style="color:var(--yes)">{{ form.errors }}</p>{% endif %}
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-    <button class="btn go" type="submit">Save</button>
-    <a class="btn" href="{% url 'day' prev_day|date:'Y-m-d' %}">Previous day</a>
+    <button class="btn go" type="submit">{% if was_saved %}Update{% else %}Save{% endif %}</button>
+    {% if prev_day %}<a class="btn" href="{% url 'day' prev_day|date:'Y-m-d' %}">Previous day</a>{% endif %}
     {% if next_day %}<a class="btn" href="{% url 'day' next_day|date:'Y-m-d' %}">Next day</a>{% endif %}
     {% if not is_today %}<a class="btn" href="{% url 'today' %}">Back to today</a>{% endif %}
   </div>

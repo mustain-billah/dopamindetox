@@ -13,7 +13,15 @@ from django.urls import reverse
 
 from . import services
 from .forms import DayLogForm, ProfileForm, SignUpForm, WeeklyNoteForm
-from .models import DayLog, Mark, Participant, WeeklyNote, challenge_start, total_days
+from .models import (
+    DayLog,
+    Mark,
+    Participant,
+    WeeklyNote,
+    challenge_end,
+    challenge_start,
+    total_days,
+)
 
 
 def get_participant(request: HttpRequest) -> Participant:
@@ -40,7 +48,15 @@ def signup(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def today(request: HttpRequest) -> HttpResponse:
-    return day_view(request, dt.date.today().isoformat())
+    """The daily form — or a waiting page when today is outside the challenge."""
+    now = dt.date.today()
+    if now < challenge_start() or now > challenge_end():
+        return render(
+            request,
+            "tracker/waiting.html",
+            {"participant": get_participant(request), "today_date": now},
+        )
+    return day_view(request, now.isoformat())
 
 
 @login_required
@@ -49,8 +65,22 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
         date = dt.date.fromisoformat(day)
     except ValueError:
         raise Http404("That is not a date")
+
+    # A day only exists if it is inside the challenge and has already happened.
     if date > dt.date.today():
         messages.error(request, "You cannot fill in a day that has not happened yet.")
+        return redirect("today")
+    if date < challenge_start():
+        messages.error(
+            request,
+            f"The challenge starts on {challenge_start():%-d %B %Y}. "
+            "There is nothing to fill in before then.",
+        )
+        return redirect("today")
+    if date > challenge_end():
+        messages.error(
+            request, f"The challenge finished on {challenge_end():%-d %B %Y}."
+        )
         return redirect("today")
 
     participant = get_participant(request)
@@ -81,7 +111,7 @@ def day_view(request: HttpRequest, day: str) -> HttpResponse:
             "date": date,
             "is_today": date == dt.date.today(),
             "was_saved": was_saved,
-            "prev_day": date - dt.timedelta(days=1),
+            "prev_day": date - dt.timedelta(days=1) if date > challenge_start() else None,
             "next_day": date + dt.timedelta(days=1) if date < dt.date.today() else None,
             "card": card,
             "elapsed": elapsed,

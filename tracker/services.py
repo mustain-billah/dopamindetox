@@ -111,5 +111,4 @@ def group_totals(cards: list[Scorecard]) -> dict:
         "joined": sum(1 for c in cards if c.has_joined),
         "on_track": sum(1 for c in cards if c.on_track and c.logged_days),
         "clean_days": sum(c.clean_days for c in cards),
-        "said_no": sum(c.said_no for c in cards),
     }
